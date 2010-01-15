@@ -150,14 +150,18 @@ void  shape_datasource::init(shape_io& shape)
    
    shape.shp().read_envelope(extent_);
    
-   
+#ifdef MAPNIK_DEBUG
    double zmin = shape.shp().read_double();
    double zmax = shape.shp().read_double();
    double mmin = shape.shp().read_double();
    double mmax = shape.shp().read_double();
-#ifdef MAPNIK_DEBUG
    std::clog << "Z min/max " << zmin << "," << zmax << "\n";
    std::clog << "M min/max " << mmin << "," << mmax << "\n";
+#else
+   shape.shp().read_double();
+   shape.shp().read_double();
+   shape.shp().read_double();
+   shape.shp().read_double();
 #endif
    // check if we have an index file around
    std::string index_name(shape_name_+".index");

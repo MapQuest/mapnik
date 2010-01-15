@@ -158,10 +158,7 @@ void  shape_datasource::init(shape_io& shape)
    std::clog << "Z min/max " << zmin << "," << zmax << "\n";
    std::clog << "M min/max " << mmin << "," << mmax << "\n";
 #else
-   shape.shp().read_double();
-   shape.shp().read_double();
-   shape.shp().read_double();
-   shape.shp().read_double();
+   shape.shp().skip(4*8);
 #endif
    // check if we have an index file around
    std::string index_name(shape_name_+".index");

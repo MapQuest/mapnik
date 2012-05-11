@@ -121,7 +121,7 @@ private:
 
     void ensure_font_face(std::string const& face_name);
     void find_unused_nodes(xml_node const& root);
-    void find_unused_nodes_recursive(xml_node const& node, std::stringstream &error_text);
+    bool find_unused_nodes_recursive(xml_node const& node, std::stringstream &error_text);
 
     void parse_symbolizer(rule &rule, xml_node::const_iterator &symIter);
 
@@ -1685,20 +1685,21 @@ void map_parser::find_unused_nodes(xml_node const& root)
     find_unused_nodes_recursive(root, error_message);
     if (!error_message.str().empty())
     {
-        throw config_error("The following nodes or attributes were not processed while parsing the xml file:" + error_message.str());
+       std::cerr << "WARNING: " << error_message.str() << std::endl;
+       //throw config_error("The following nodes or attributes were not processed while parsing the xml file:" + error_message.str());
     }
 }
 
-void map_parser::find_unused_nodes_recursive(xml_node const& node, std::stringstream &error_message)
+bool map_parser::find_unused_nodes_recursive(xml_node const& node, std::stringstream &error_message)
 {
     if (!node.processed())
     {
         if (node.is_text()) {
             error_message << "\n* text '" << node.text() << "'";
         } else {
-            error_message << "\n* node '" << node.name() << "' in line " << node.line();
+           error_message << "\n* node '" << node.name() << "' in " << node.filename() << " at line " << node.line();
         }
-        return; //All attributes and children are automatically unprocessed, too.
+        return true; //All attributes and children are automatically unprocessed, too.
     }
     xml_node::attribute_map const& attr = node.get_attributes();
     xml_node::attribute_map::const_iterator aitr = attr.begin();
@@ -1714,9 +1715,19 @@ void map_parser::find_unused_nodes_recursive(xml_node const& node, std::stringst
     }
     xml_node::const_iterator itr = node.begin();
     xml_node::const_iterator end = node.end();
+    bool any_child_unused = false;
     for (; itr!=end; itr++)
     {
-        find_unused_nodes_recursive(*itr, error_message);
+       bool child_unused = find_unused_nodes_recursive(*itr, error_message);
+       any_child_unused = any_child_unused || child_unused;
+    }
+    if (any_child_unused)
+    {
+       if (node.is_text()) {
+          error_message << "\n- when used in text '" << node.text() << "'";
+       } else {
+          error_message << "\n- when used in node '" << node.name() << "' in " << node.filename() << " at line " << node.line();
+       }
     }
 }
 

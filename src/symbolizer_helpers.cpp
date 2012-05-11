@@ -101,10 +101,10 @@ bool text_symbolizer_helper<FaceManagerT, DetectorT>::next_point_placement()
         {
             //Found a placement
             point_itr_ = points_.erase(point_itr_);
+            finder_->update_detector();
             if (writer_.first) writer_.first->add_text(
                 finder_->get_results(), finder_->get_extents(),
                 feature_, t_, writer_.second);
-            finder_->update_detector();
             return true;
         }
         //No placement for this point. Keep it in points_ for next try.

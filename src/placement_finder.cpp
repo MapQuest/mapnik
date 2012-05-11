@@ -774,7 +774,8 @@ void placement_finder<DetectorT>::find_line_circle_intersection(
 template <typename DetectorT>
 void placement_finder<DetectorT>::update_detector()
 {
-    if (collect_extents_) extents_.init(0,0,0,0);
+   bool reinit_extents = collect_extents_;
+
     // add the bboxes to the detector and remove from the placement
     while (!envelopes_.empty())
     {
@@ -784,8 +785,21 @@ void placement_finder<DetectorT>::update_detector()
 
         if (collect_extents_)
         {
-            extents_.expand_to_include(e);
+           if (reinit_extents)
+           {
+              extents_ = e;
+              reinit_extents = false;
+           }
+           else
+           {
+              extents_.expand_to_include(e);
+           }
         }
+    }
+
+    if (reinit_extents)
+    {
+       extents_ = box2d<double>();
     }
 }
 

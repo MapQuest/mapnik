@@ -24,9 +24,17 @@
 #include <mapnik/metawriter.hpp>
 #include <mapnik/metawriter_inmem.hpp>
 #include <mapnik/text_placements/base.hpp>
+#include <mapnik/ctrans.hpp>
+#include <mapnik/text_path.hpp>
 
 // Boost
 #include <boost/foreach.hpp>
+#include <boost/make_shared.hpp>
+
+// AGG - for the path-clipping stuff
+#include "agg_basics.h"
+#include "agg_conv_clip_polyline.h"
+
 
 using std::map;
 using std::string;
@@ -69,21 +77,106 @@ metawriter_inmem::add_box(box2d<double> const& box, Feature const& feature,
     instances_.push_back(inst);
 }
 
+namespace 
+{
+
+void copy_clipped(geometry_container &cont, 
+                  Feature const& feature,
+                  box2d<double> const& ext,
+                  CoordTransform const& t)
+{
+   typedef coord_transform<CoordTransform,geometry_type> projected_path_type;
+   typedef agg::conv_clip_polyline<projected_path_type> path_type;
+
+   for (unsigned int i = 0; i < feature.num_geometries(); ++i)
+   {
+      // nasty const-cast, but AGG requires a non-const reference as
+      // a parameter...
+      geometry_type &geom = const_cast<geometry_type &>(feature.get_geometry(i));
+
+      if (geom.num_points() > 1)
+      {
+         projected_path_type projected(t, geom);
+         path_type path(projected);
+         path.clip_box(ext.minx(), ext.miny(), ext.maxx(), ext.maxy());
+         
+         geometry_type *cgeom = new geometry_type(geom.type());
+         double x = 0.0, y = 0.0;
+         unsigned int command = 0;
+         path.rewind(0);
+
+         while (!agg::is_stop(command = path.vertex(&x, &y)))
+         {
+            cgeom->push_vertex(x, y, CommandType(command));
+         }
+
+         cont.push_back(cgeom);
+      }
+   }
+}
+
+} // anonymous namespace
+
 void
 metawriter_inmem::add_text(
-    boost::ptr_vector<text_path> & /*text*/,
-    box2d<double> const& extents,
+    boost::ptr_vector<text_path> &placements,
+    box2d<double> const& /*extents*/,
     Feature const& feature,
-    CoordTransform const& /*t*/,
+    CoordTransform const& t,
     metawriter_properties const& properties)
 {
-    if (extents.valid())
-    {
-        meta_instance inst;
-        inst.properties = intersect_properties(feature, properties);
-        inst.box = extents;
-        instances_.push_back(inst);
-    }
+   // for each placement
+   for (size_t n = 0; n < placements.size(); ++n)
+   {
+      text_path &placement = placements[n];
+      box2d<double> bbox;
+      bool first = true;
+
+      // gather bbox for this placement
+      char_info_ptr c;
+      double x, y, angle;
+      for (size_t i = 0; i < placement.num_nodes(); ++i) 
+      {
+         placement.vertex(&c, &x, &y, &angle);
+
+         double x0, y0, x1, y1, x2, y2, x3, y3;
+         double sina = sin(angle);
+         double cosa = cos(angle);
+         x0 = placement.center.x + x - sina*c->ymin;
+         y0 = placement.center.y - y - cosa*c->ymin;
+         x1 = x0 + c->width * cosa;
+         y1 = y0 - c->width * sina;
+         x2 = x0 + (c->width * cosa - c->height() * sina);
+         y2 = y0 - (c->width * sina + c->height() * cosa);
+         x3 = x0 - c->height() * sina;
+         y3 = y0 - c->height() * cosa;
+         
+         if (first)
+         {
+            bbox.init(x0, y0, x0, y0);
+            first = false;
+         }
+         bbox.expand_to_include(x0, y0);
+         bbox.expand_to_include(x1, y1);
+         bbox.expand_to_include(x2, y2);
+         bbox.expand_to_include(x3, y3);
+      }
+
+      // got to put this back to the beginning, or it causes
+      // problems for code that uses it later.
+      placement.rewind();
+
+      if (bbox.intersects(box2d<double>(0, 0, width_, height_)))
+      {
+         meta_instance inst;
+         inst.properties = intersect_properties(feature, properties);
+         inst.box = bbox;
+         
+         inst.geom_cont = boost::make_shared<geometry_container>();
+         copy_clipped(*(inst.geom_cont), feature, bbox, t);
+         instances_.push_back(inst);
+      }
+   }
 }
 
 void

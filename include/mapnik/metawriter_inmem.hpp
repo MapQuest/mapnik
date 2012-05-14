@@ -90,6 +90,7 @@ public:
     struct MAPNIK_DECL meta_instance {
         box2d<double> box;
         std::map<std::string, value> properties;
+        boost::shared_ptr<geometry_container> geom_cont;
     };
 
     typedef std::list<meta_instance> meta_instance_list;

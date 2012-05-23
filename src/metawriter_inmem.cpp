@@ -30,6 +30,7 @@
 // Boost
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/variant/apply_visitor.hpp>
 
 // AGG - for the path-clipping stuff
 #include "agg_basics.h"
@@ -45,17 +46,57 @@ using mapnik::value;
 using mapnik::Feature;
 using mapnik::metawriter_properties;
 
+struct insert_params : public boost::static_visitor<>
+{
+   insert_params(const std::string &k, 
+                 mapnik::parameters &p) 
+      : key_(k), params_(p)
+   {}
+
+   void operator()(const mapnik::value_null &n)
+   {
+      params_.insert(std::make_pair(key_, n));
+   }
+
+   void operator()(const bool &b)
+   {
+      params_.insert(std::make_pair(key_, int(b)));
+   }
+
+   void operator()(const int &i)
+   {
+      params_.insert(std::make_pair(key_, i));
+   }
+
+   void operator()(const double &d)
+   {
+      params_.insert(std::make_pair(key_, d));
+   }
+
+   void operator()(const UnicodeString &s)
+   {
+      params_.insert(std::make_pair(key_, mapnik::value(s).to_string()));
+   }
+
+   const std::string &key_;
+   mapnik::parameters &params_;
+};
+
 // intersect a set of properties with those in the feature descriptor
-map<string,value> intersect_properties(Feature const& feature, metawriter_properties const& properties) {
+mapnik::parameters intersect_properties(Feature const& feature, 
+                                        metawriter_properties const& properties) 
+{
+   mapnik::parameters nprops;
+   BOOST_FOREACH(string p, properties)
+   {
+      if (feature.has_key(p))
+      {
+         insert_params ip(p, nprops);
+         boost::apply_visitor(ip, feature.get(p).base());
+      }
+   }
 
-    map<string,value> nprops;
-    BOOST_FOREACH(string p, properties)
-    {
-        if (feature.has_key(p))
-            nprops.insert(std::make_pair(p,feature.get(p)));
-    }
-
-    return nprops;
+   return nprops;
 }} // end anonymous namespace
 
 namespace mapnik {

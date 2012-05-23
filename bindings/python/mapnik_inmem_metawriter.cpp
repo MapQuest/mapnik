@@ -31,30 +31,14 @@
 using mapnik::metawriter_inmem;
 using mapnik::metawriter_inmem_ptr;
 
-namespace {
-std::map<std::string, mapnik::value>::const_iterator
-mapnik_value_map_begin(const std::map<std::string, mapnik::value> &m) {
-    return m.begin();
-}
-
-std::map<std::string, mapnik::value>::const_iterator
-mapnik_value_map_end(const std::map<std::string, mapnik::value> &m) {
-    return m.end();
-}
-}
-
 void export_inmem_metawriter() {
     using namespace boost::python;
-
-    class_<std::map<std::string, mapnik::value> >
-        ("MapnikProperties", "Retarded.", init<>())
-        .def("__iter__", range(&mapnik_value_map_begin, &mapnik_value_map_end))
-        ;
 
     class_<metawriter_inmem::meta_instance>
         ("MetaInstance", "Single rendered instance of meta-information.", no_init)
         .def_readonly("box", &metawriter_inmem::meta_instance::box)
         .def_readonly("properties", &metawriter_inmem::meta_instance::properties)
+        .def_readonly("geometry", &metawriter_inmem::meta_instance::geom_cont)
         ;
 
     class_<metawriter_inmem, metawriter_inmem_ptr, boost::noncopyable>

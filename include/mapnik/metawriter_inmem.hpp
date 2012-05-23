@@ -26,6 +26,7 @@
 // mapnik
 #include <mapnik/config.hpp>
 #include <mapnik/metawriter.hpp>
+#include <mapnik/params.hpp>
 
 // boost
 #include <boost/shared_ptr.hpp>
@@ -89,7 +90,7 @@ public:
      */
     struct MAPNIK_DECL meta_instance {
         box2d<double> box;
-        std::map<std::string, value> properties;
+        parameters properties;
         boost::shared_ptr<geometry_container> geom_cont;
     };
 

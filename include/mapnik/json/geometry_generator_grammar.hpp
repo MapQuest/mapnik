@@ -154,7 +154,7 @@ struct geometry_generator_grammar :
         polygon = &uint_(mapnik::Polygon)[_1 = _type(_val)]
             << lit('[')
             << coords2
-            << lit("]")
+            << lit("]]")
             ;
         
         point_coord = &uint_ 

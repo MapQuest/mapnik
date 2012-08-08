@@ -100,7 +100,7 @@ public:
     };
     struct text_element
     {
-        text_element(text_placement_info const& p, string_info const& s) : point_place_box(p, s), info(s) {}
+        text_element(text_placement_info const& pi, string_info const& s) : point_place_box(pi, s), info(s) {}
         string_info const& info;
         text_place_boxes_at_point point_place_box;
     };
@@ -158,9 +158,9 @@ public:
         box_elements_.clear();
     }
     
-    void add_text_element(text_placement_info const& p, string_info const& s)
+    void add_text_element(string_info const& s)
     {
-        text_elements_.push_back(text_element(p, s));
+        text_elements_.push_back(text_element(pi, s));
         double w = text_elements_.back().point_place_box.string_width_;
         if (w > text_width_) text_width_ = w;
     }

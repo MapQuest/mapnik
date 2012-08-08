@@ -49,26 +49,28 @@ namespace mapnik
 {
 
 template <typename DetectorT>
-struct point_placement_check
+struct placement_box_check
 {
    DetectorT & detector_;
    box2d<double> const& dimensions_;
-   text_place_boxes_at_point &point_place_box_;
+   text_placement_info const& placement_info_;
+   text_symbolizer_properties const& sym_properties_;
 
-   point_placement_check(DetectorT &detector, 
+   placement_box_check(DetectorT &detector, 
                          box2d<double> const& dimensions,
-                         text_place_boxes_at_point &f)
+                         text_placement_info const& placement_info)
       : detector_(detector),
         dimensions_(dimensions),
-        point_place_box_(f)
+        placement_info_(placement_info),
+        sym_properties_(placement_info.properties)
    {}
 
    bool operator()(box2d<double> const& e) const
    {
       // if there is an overlap with existing envelopes, then exit - no placement
       if (!detector_.extent().intersects(e) ||
-          (!point_place_box_.p.allow_overlap &&
-           !detector_.has_point_placement(e, point_place_box_.pi.get_actual_minimum_distance())))
+          (!sym_properties_.allow_overlap &&
+           !detector_.has_point_placement(e, placement_info_.get_actual_minimum_distance())))
       {
          return false;
       }
@@ -81,9 +83,9 @@ struct point_placement_check
       // if box overlaps or is within min repeat distance of another placement,
       // then exit - no placement
       if (!detector_.extent().intersects(e) ||
-          (!point_place_box_.p.allow_overlap &&
-           !(repeat_key.isEmpty() ? detector_.has_point_placement(e, point_place_box_.pi.get_actual_margin()) :
-              detector_.has_point_placement(e, point_place_box_.pi.get_actual_margin(), repeat_key, point_place_box_.pi.get_actual_minimum_distance()))))
+          (!sym_properties_.allow_overlap &&
+           !(repeat_key.isEmpty() ? detector_.has_point_placement(e, placement_info_.get_actual_margin()) :
+              detector_.has_point_placement(e, placement_info_.get_actual_margin(), repeat_key, placement_info_.get_actual_minimum_distance()))))
       {
          return false;
       }
@@ -96,10 +98,10 @@ private:
    bool check_bounds(box2d<double> const& e) const
    {
       // check minimum padding
-      if (point_place_box_.p.minimum_padding > 0)
+      if (sym_properties_.minimum_padding > 0)
       {
          // min padding is set, so create padded box from bounds
-         double min_pad = point_place_box_.pi.get_actual_minimum_padding();
+         double min_pad = placement_info_.get_actual_minimum_padding();
          box2d<double> epad(e.minx()-min_pad,
                             e.miny()-min_pad,
                             e.maxx()+min_pad,
@@ -110,7 +112,7 @@ private:
       }
       
       // otherwise, return true if avoid_edges is false or the box is inside of bounds 
-      return !point_place_box_.p.avoid_edges || dimensions_.contains(e);
+      return !sym_properties_.avoid_edges || dimensions_.contains(e);
    }
 };
 
@@ -176,7 +178,7 @@ placement_finder<DetectorT>::placement_finder(Feature const& feature,
       check_repeat_(check_repeat),
       text_width_(0)
 {
-    add_text_element(placement_info, info);
+    add_text_element(info);
 }
 
 template <typename DetectorT>
@@ -197,7 +199,7 @@ placement_finder<DetectorT>::placement_finder(Feature const& feature,
 {
     for (string_info_list::iterator itr = info_list.begin(); itr != info_list.end(); ++itr)
     {
-        add_text_element(placement_info, **itr);
+        add_text_element(**itr);
         
         // put strings together for label repeat check
         repeat_text_ += (*itr)->get_string();
@@ -279,7 +281,7 @@ void placement_finder<DetectorT>::find_point_placement(double label_x,
    text_place_boxes_at_point & point_place_box = text_elements_.front().point_place_box;
    string_info const& info = text_elements_.front().info;
     
-   point_placement_check<DetectorT> check(detector_, dimensions_, point_place_box);
+   placement_box_check<DetectorT> check(detector_, dimensions_, pi);
    std::auto_ptr<text_path> current_placement(new text_path(label_x, label_y));
    
    boost::optional<std::queue< box2d<double> > > result = 
@@ -355,6 +357,7 @@ void placement_finder<DetectorT>::find_line_placements(PathT & shape_path)
     double displacement = p.displacement.second; // displace by dy
     
     bool has_displacement = (displacement != 0.0);
+    bool has_characters = false;
 
     BOOST_FOREACH(text_element &text, text_elements_)
     {
@@ -369,7 +372,17 @@ void placement_finder<DetectorT>::find_line_placements(PathT & shape_path)
         {
             has_displacement = true;
         }
+        
+        // check if any of the text element contains characters
+        if (text.info.num_characters() > 0)
+        {
+            has_characters = true;
+        }
     }
+    
+    // don't place if there is no actual text
+    if (!has_characters)
+        return;
 
     unsigned cmd;
     double new_x = 0.0;
@@ -783,6 +796,7 @@ template <typename DetectorT>
 bool placement_finder<DetectorT>::test_placement(std::auto_ptr<text_path> const& current_placement,
                                                  int orientation)
 {
+    placement_box_check<DetectorT> check(detector_, dimensions_, pi);
     bool status = true;
     BOOST_FOREACH(const text_element &text, text_elements_)
     {
@@ -819,37 +833,11 @@ bool placement_finder<DetectorT>::test_placement(std::auto_ptr<text_path> const&
             e.expand_to_include(x + (cwidth*cosa - ci.height()*sina),
                                 y - (cwidth*sina + ci.height()*cosa));
 
-            if (!detector_.extent().intersects(e) ||
-                (!p.allow_overlap &&
-                 !detector_.has_placement(e, text.info.get_string(), pi.get_actual_minimum_distance())
-                    )
-                )
-            {
-                //MAPNIK_LOG_ERROR(placement_finder) << "No Intersects:" << !dimensions_.intersects(e) << ": " << e << " @ " << dimensions_;
-                //MAPNIK_LOG_ERROR(placement_finder) << "No Placements:" << !detector_.has_placement(e, text.info.get_string(), p.minimum_distance);
-                status = false;
-                break;
-            }
-
-            if (p.avoid_edges && !dimensions_.contains(e))
-            {
-                //MAPNIK_LOG_ERROR(placement_finder) << "Fail avoid edges";
-                status = false;
-                break;
-            }
-            if (p.minimum_padding > 0)
-            {
-                double min_pad = pi.get_actual_minimum_padding();
-                box2d<double> epad(e.minx()-min_pad,
-                                   e.miny()-min_pad,
-                                   e.maxx()+min_pad,
-                                   e.maxy()+min_pad);
-                if (!dimensions_.contains(epad))
-                {
-                    status = false;
-                    break;
-                }
-            }
+            // check envelope against detector, min padding, and avoid edges
+            status = check(e, repeat_text_);
+            if (!status) break;
+            
+            // add envelope if it passed
             envelopes_.push(e);
         }
     }

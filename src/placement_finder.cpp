@@ -769,7 +769,7 @@ std::auto_ptr<text_path> placement_finder<DetectorT>::get_placement_offset(std::
     }
 
     //If we placed too many characters upside down
-    if (upside_down_char_count >= current_placement->num_nodes()/2.0)
+    if (upside_down_char_count >= current_placement->num_nodes() / 2.0 && orientation != 0)
     {
         //if we auto-detected the orientation then retry with the opposite orientation
         if (!orientation_forced)

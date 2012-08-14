@@ -38,7 +38,6 @@
 
 using mapnik::query;
 using mapnik::box2d;
-using mapnik::CoordTransform;
 using mapnik::Feature;
 using mapnik::feature_ptr;
 using mapnik::geometry_utils;
@@ -75,7 +74,8 @@ feature_ptr sqlite_featureset::next()
         }
 
         feature_ptr feature = feature_factory::create(ctx_,rs_->column_integer(1));
-        geometry_utils::from_wkb(feature->paths(), data, size, format_);
+        if (!geometry_utils::from_wkb(feature->paths(), data, size, format_))
+            continue;
 
         if (!spatial_index_)
         {

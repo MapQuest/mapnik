@@ -213,7 +213,8 @@ class symbolizer_with_image_helper
 {
 public:
    symbolizer_with_image_helper(symbolizer_with_image const& sym,
-                                Feature const& feature);
+                                Feature const& feature,
+                                double scale_factor_);
    
    inline boost::optional<mapnik::marker_ptr> const& get_marker() const 
    {

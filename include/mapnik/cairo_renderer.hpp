@@ -31,7 +31,7 @@
 #include <mapnik/font_engine_freetype.hpp>
 #include <mapnik/label_collision_detector.hpp>
 #include <mapnik/map.hpp>
-//#include <mapnik/marker.hpp>
+#include <mapnik/rule.hpp> // for all symbolizers
 
 // cairo
 #include <cairomm/context.h>
@@ -125,8 +125,10 @@ public:
         // nothing to do
     }
 
-protected:
     void render_marker(pixel_position const& pos, marker const& marker, const agg::trans_affine & mtx, double opacity=1.0, bool recenter=true);
+    void render_box(box2d<double> const& b);
+protected:
+
 
     Map const& m_;
     Cairo::RefPtr<Cairo::Context> context_;

@@ -60,9 +60,9 @@ void add_wkt_impl(path_type& p, std::string const& wkt)
     if (!result) throw std::runtime_error("Failed to parse WKT");
 }
 
-void add_wkb_impl(path_type& p, std::string const& wkb)
+bool add_wkb_impl(path_type& p, std::string const& wkb)
 {
-    mapnik::geometry_utils::from_wkb(p, wkb.c_str(), wkb.size());
+    return mapnik::geometry_utils::from_wkb(p, wkb.c_str(), wkb.size());
 }
 
 boost::shared_ptr<path_type> from_wkt_impl(std::string const& wkt)
@@ -93,13 +93,20 @@ inline std::string boost_version()
 PyObject* to_wkb( geometry_type const& geom, mapnik::util::wkbByteOrder byte_order)
 {
     mapnik::util::wkb_buffer_ptr wkb = mapnik::util::to_wkb(geom,byte_order);
-    return
+    if (wkb)
+    {
+        return
 #if PY_VERSION_HEX >= 0x03000000
-        ::PyBytes_FromStringAndSize
+            ::PyBytes_FromStringAndSize
 #else
-        ::PyString_FromStringAndSize
+            ::PyString_FromStringAndSize
 #endif
-        ((const char*)wkb->buffer(),wkb->size());
+            ((const char*)wkb->buffer(),wkb->size());
+    }
+    else
+    {
+        Py_RETURN_NONE;
+    }
 }
 #else
 PyObject* to_wkb( geometry_type const& geom)
@@ -114,13 +121,20 @@ PyObject* to_wkb( geometry_type const& geom)
 PyObject* to_wkb2( path_type const& p, mapnik::util::wkbByteOrder byte_order)
 {
     mapnik::util::wkb_buffer_ptr wkb = mapnik::util::to_wkb(p,byte_order);
-    return
+    if (wkb)
+    {
+        return
 #if PY_VERSION_HEX >= 0x03000000
-        ::PyBytes_FromStringAndSize
+            ::PyBytes_FromStringAndSize
 #else
-        ::PyString_FromStringAndSize
+            ::PyString_FromStringAndSize
 #endif
-        ((const char*)wkb->buffer(),wkb->size());
+            ((const char*)wkb->buffer(),wkb->size());
+    }
+    else
+    {
+        Py_RETURN_NONE;
+    }
 }
 #else
 PyObject* to_wkb2( path_type const& p)

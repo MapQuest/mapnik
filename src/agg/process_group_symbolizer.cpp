@@ -81,7 +81,7 @@ struct place_bboxes : public boost::static_visitor<>
 
    void operator()(point_symbolizer const& sym) const
    {
-      symbolizer_with_image_helper helper(sym, feature_);
+      symbolizer_with_image_helper helper(sym, feature_, scale_factor_);
 
       box_.expand_to_include(helper.get_label_ext());
    }
@@ -162,7 +162,7 @@ struct render_visitor : public boost::static_visitor<>
 
    void operator()(point_symbolizer const &sym) const
    {
-      symbolizer_with_image_helper helper(sym, feature_);
+      symbolizer_with_image_helper helper(sym, feature_, scale_factor_);
       const marker &m = **helper.get_marker();
       renderer_.render_marker(pixel_, m, helper.get_transform(), sym.get_opacity(), sym.comp_op());
    }

@@ -39,7 +39,6 @@
 
 using mapnik::query;
 using mapnik::box2d;
-using mapnik::CoordTransform;
 using mapnik::Feature;
 using mapnik::feature_ptr;
 using mapnik::geometry_utils;
@@ -48,12 +47,10 @@ using mapnik::feature_factory;
 
 
 ogr_featureset::ogr_featureset(mapnik::context_ptr const & ctx,
-                               OGRDataSource & dataset,
                                OGRLayer & layer,
                                OGRGeometry & extent,
                                std::string const& encoding)
     : ctx_(ctx),
-      dataset_(dataset),
       layer_(layer),
       layerdef_(layer.GetLayerDefn()),
       tr_(new transcoder(encoding)),
@@ -65,12 +62,10 @@ ogr_featureset::ogr_featureset(mapnik::context_ptr const & ctx,
 }
 
 ogr_featureset::ogr_featureset(mapnik::context_ptr const& ctx,
-                               OGRDataSource & dataset,
                                OGRLayer & layer,
                                mapnik::box2d<double> const& extent,
                                std::string const& encoding)
     : ctx_(ctx),
-      dataset_(dataset),
       layer_(layer),
       layerdef_(layer.GetLayerDefn()),
       tr_(new transcoder(encoding)),

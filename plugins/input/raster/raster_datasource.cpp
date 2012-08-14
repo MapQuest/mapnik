@@ -26,6 +26,7 @@
 
 // mapnik
 #include <mapnik/debug.hpp>
+#include <mapnik/ctrans.hpp>
 #include <mapnik/image_reader.hpp>
 #include <mapnik/boolean.hpp>
 
@@ -159,7 +160,7 @@ mapnik::datasource::datasource_t raster_datasource::type() const
     return datasource::Raster;
 }
 
-std::string raster_datasource::name()
+const char * raster_datasource::name()
 {
     return "raster";
 }

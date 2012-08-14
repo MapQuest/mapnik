@@ -32,6 +32,10 @@ try:
 except:
     HAS_DISTUTILS = False
 
+if platform.uname()[4] == 'ppc64':
+    LIBDIR_SCHEMA='lib64'
+else:
+    LIBDIR_SCHEMA='lib'
 
 py3 = None
 
@@ -87,7 +91,7 @@ pretty_dep_names = {
 # Core plugin build configuration
 # opts.AddVariables still hardcoded however...
 PLUGINS = { # plugins with external dependencies
-            # configured by calling project, henche 'path':None
+            # configured by calling project, hence 'path':None
             'postgis': {'default':True,'path':None,'inc':'libpq-fe.h','lib':'pq','lang':'C'},
             'gdal':    {'default':True,'path':None,'inc':'gdal_priv.h','lib':'gdal','lang':'C++'},
             'ogr':     {'default':True,'path':None,'inc':'ogrsf_frmts.h','lib':'gdal','lang':'C++'},
@@ -106,6 +110,7 @@ PLUGINS = { # plugins with external dependencies
             'raster':  {'default':True,'path':None,'inc':None,'lib':None,'lang':'C++'},
             'geojson': {'default':True,'path':None,'inc':None,'lib':None,'lang':'C++'},
             'kismet':  {'default':False,'path':None,'inc':None,'lib':None,'lang':'C++'},
+            'python':  {'default':True,'path':None,'inc':None,'lib':None,'lang':'C++'},
             }
 
 
@@ -236,14 +241,6 @@ def sort_paths(items,priority):
     for k,v in path_types.items():
         new.extend(v)
     return new
-
-if platform.dist()[0] in ('Ubuntu','debian'):
-    LIBDIR_SCHEMA='lib'
-elif platform.uname()[4] == 'ppc64':
-    LIBDIR_SCHEMA='lib64'
-else:
-    LIBDIR_SCHEMA='lib'
-
 
 def pretty_dep(dep):
     pretty = pretty_dep_names.get(dep)
@@ -1331,8 +1328,59 @@ if not preconfigured:
         color_print(4,'Not building with cairo support, pass CAIRO=True to enable')
 
     if 'python' in env['BINDINGS']:
+        if not os.access(env['PYTHON'], os.X_OK):
+            color_print(1,"Cannot run python interpreter at '%s', make sure that you have the permissions to execute it." % env['PYTHON'])
+            Exit(1)
 
         py3 = 'True' in os.popen('''%s -c "import sys as s;s.stdout.write(str(s.version_info[0] == 3))"''' % env['PYTHON']).read().strip()
+
+        if py3:
+            sys_prefix = '''%s -c "import sys; print(sys.prefix)"''' % env['PYTHON']
+        else:
+            sys_prefix = '''%s -c "import sys; print sys.prefix"''' % env['PYTHON']
+        env['PYTHON_SYS_PREFIX'] = call(sys_prefix)
+
+        if HAS_DISTUTILS:
+            if py3:
+                sys_version = '''%s -c "from distutils.sysconfig import get_python_version; print(get_python_version())"''' % env['PYTHON']
+            else:
+                sys_version = '''%s -c "from distutils.sysconfig import get_python_version; print get_python_version()"''' % env['PYTHON']
+            env['PYTHON_VERSION'] = call(sys_version)
+
+            if py3:
+                py_includes = '''%s -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())"''' % env['PYTHON']
+            else:
+                py_includes = '''%s -c "from distutils.sysconfig import get_python_inc; print get_python_inc()"''' % env['PYTHON']
+            env['PYTHON_INCLUDES'] = call(py_includes)
+
+            # Note: we use the plat_specific argument here to make sure to respect the arch-specific site-packages location
+            if py3:
+                site_packages = '''%s -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True))"''' % env['PYTHON']
+            else:
+                site_packages = '''%s -c "from distutils.sysconfig import get_python_lib; print get_python_lib(plat_specific=True)"''' % env['PYTHON']
+            env['PYTHON_SITE_PACKAGES'] = call(site_packages)
+        else:
+            env['PYTHON_SYS_PREFIX'] = os.popen('''%s -c "import sys; print sys.prefix"''' % env['PYTHON']).read().strip()
+            env['PYTHON_VERSION'] = os.popen('''%s -c "import sys; print sys.version"''' % env['PYTHON']).read()[0:3]
+            env['PYTHON_INCLUDES'] = env['PYTHON_SYS_PREFIX'] + '/include/python' + env['PYTHON_VERSION']
+            env['PYTHON_SITE_PACKAGES'] = env['DESTDIR'] + os.path.sep + env['PYTHON_SYS_PREFIX'] + os.path.sep + env['LIBDIR_SCHEMA'] + '/python' + env['PYTHON_VERSION'] + '/site-packages/'
+
+        # if user-requested custom prefix fall back to manual concatenation for building subdirectories
+        if env['PYTHON_PREFIX']:
+            py_relative_install = env['LIBDIR_SCHEMA'] + '/python' + env['PYTHON_VERSION'] + '/site-packages/'
+            env['PYTHON_INSTALL_LOCATION'] = env['DESTDIR'] + os.path.sep + env['PYTHON_PREFIX'] + os.path.sep +  py_relative_install
+        else:
+            env['PYTHON_INSTALL_LOCATION'] = env['DESTDIR'] + os.path.sep + env['PYTHON_SITE_PACKAGES']
+
+        if py3:
+            is_64_bit = '''%s -c "import sys; print(sys.maxsize == 9223372036854775807)"''' % env['PYTHON']
+        else:
+            is_64_bit = '''%s -c "import sys; print sys.maxint == 9223372036854775807"''' % env['PYTHON']
+
+        if is_64_bit:
+            env['PYTHON_IS_64BIT'] = True
+        else:
+            env['PYTHON_IS_64BIT'] = False
 
         if py3 and env['BOOST_PYTHON_LIB'] == 'boost_python':
             env['BOOST_PYTHON_LIB'] = 'boost_python3%s' % env['BOOST_APPEND']
@@ -1343,7 +1391,7 @@ if not preconfigured:
             color_print(1,'Could not find required header files for boost python')
             env['MISSING_DEPS'].append('boost python')
 
-        if not conf.CheckLibWithHeader(libs=[env['BOOST_PYTHON_LIB']], header='boost/python/detail/config.hpp', language='C++'):
+        if not conf.CheckLibWithHeader(libs=[env['BOOST_PYTHON_LIB'],'python%s' % env['PYTHON_VERSION']], header='boost/python/detail/config.hpp', language='C++'):
             color_print(1, 'Could not find library "%s" for boost python bindings' % env['BOOST_PYTHON_LIB'])
             # failing on launchpad, so let's make it a warning for now
             #env['MISSING_DEPS'].append('boost python')
@@ -1475,66 +1523,13 @@ if not preconfigured:
             if env['DEBUG']:
                 env.Append(CXXFLAGS = gcc_cxx_flags + '-O0 -fno-inline %s' % debug_flags)
             else:
-                env.Append(CXXFLAGS = gcc_cxx_flags + '-O%s -finline-functions -Wno-inline -Wno-parentheses -Wno-char-subscripts %s' % (env['OPTIMIZATION'],ndebug_flags))
+                env.Append(CXXFLAGS = gcc_cxx_flags + '-O%s -fno-strict-aliasing -finline-functions -Wno-inline -Wno-parentheses -Wno-char-subscripts %s' % (env['OPTIMIZATION'],ndebug_flags))
 
             if env['DEBUG_UNDEFINED']:
                 env.Append(CXXFLAGS = '-fcatch-undefined-behavior -ftrapv -fwrapv')
 
         if 'python' in env['BINDINGS']:
-            if not os.access(env['PYTHON'], os.X_OK):
-                color_print(1,"Cannot run python interpreter at '%s', make sure that you have the permissions to execute it." % env['PYTHON'])
-                Exit(1)
-
-            if py3:
-                sys_prefix = '''%s -c "import sys; print(sys.prefix)"''' % env['PYTHON']
-            else:
-                sys_prefix = '''%s -c "import sys; print sys.prefix"''' % env['PYTHON']
-            env['PYTHON_SYS_PREFIX'] = call(sys_prefix)
-
-            if HAS_DISTUTILS:
-                if py3:
-                    sys_version = '''%s -c "from distutils.sysconfig import get_python_version; print(get_python_version())"''' % env['PYTHON']
-                else:
-                    sys_version = '''%s -c "from distutils.sysconfig import get_python_version; print get_python_version()"''' % env['PYTHON']
-                env['PYTHON_VERSION'] = call(sys_version)
-
-                if py3:
-                    py_includes = '''%s -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())"''' % env['PYTHON']
-                else:
-                    py_includes = '''%s -c "from distutils.sysconfig import get_python_inc; print get_python_inc()"''' % env['PYTHON']
-                env['PYTHON_INCLUDES'] = call(py_includes)
-
-                # Note: we use the plat_specific argument here to make sure to respect the arch-specific site-packages location
-                if py3:
-                    site_packages = '''%s -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True))"''' % env['PYTHON']
-                else:
-                    site_packages = '''%s -c "from distutils.sysconfig import get_python_lib; print get_python_lib(plat_specific=True)"''' % env['PYTHON']
-                env['PYTHON_SITE_PACKAGES'] = call(site_packages)
-            else:
-                env['PYTHON_SYS_PREFIX'] = os.popen('''%s -c "import sys; print sys.prefix"''' % env['PYTHON']).read().strip()
-                env['PYTHON_VERSION'] = os.popen('''%s -c "import sys; print sys.version"''' % env['PYTHON']).read()[0:3]
-                env['PYTHON_INCLUDES'] = env['PYTHON_SYS_PREFIX'] + '/include/python' + env['PYTHON_VERSION']
-                env['PYTHON_SITE_PACKAGES'] = env['DESTDIR'] + os.path.sep + env['PYTHON_SYS_PREFIX'] + os.path.sep + env['LIBDIR_SCHEMA'] + '/python' + env['PYTHON_VERSION'] + '/site-packages/'
-
-            # if user-requested custom prefix fall back to manual concatenation for building subdirectories
-            if env['PYTHON_PREFIX']:
-                py_relative_install = env['LIBDIR_SCHEMA'] + '/python' + env['PYTHON_VERSION'] + '/site-packages/'
-                env['PYTHON_INSTALL_LOCATION'] = env['DESTDIR'] + os.path.sep + env['PYTHON_PREFIX'] + os.path.sep +  py_relative_install
-            else:
-                env['PYTHON_INSTALL_LOCATION'] = env['DESTDIR'] + os.path.sep + env['PYTHON_SITE_PACKAGES']
-
-            if py3:
-                is_64_bit = '''%s -c "import sys; print(sys.maxsize == 9223372036854775807)"''' % env['PYTHON']
-            else:
-                is_64_bit = '''%s -c "import sys; print sys.maxint == 9223372036854775807"''' % env['PYTHON']
-
-            if is_64_bit:
-                env['PYTHON_IS_64BIT'] = True
-            else:
-                env['PYTHON_IS_64BIT'] = False
-
             majver, minver = env['PYTHON_VERSION'].split('.')
-
             # we don't want the includes it in the main environment...
             # as they are later set in the python build.py
             # ugly hack needed until we have env specific conf

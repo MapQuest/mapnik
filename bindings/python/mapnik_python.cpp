@@ -72,6 +72,7 @@ void export_logger();
 
 #include <mapnik/version.hpp>
 #include <mapnik/value_error.hpp>
+#include <mapnik/layer.hpp>
 #include <mapnik/map.hpp>
 #include <mapnik/agg_renderer.hpp>
 #ifdef HAVE_CAIRO
@@ -279,12 +280,19 @@ double scale_denominator(mapnik::Map const &map, bool geographic)
 }
 
 // http://docs.python.org/c-api/exceptions.html#standard-exceptions
-void config_error_translator(mapnik::config_error const & ex) {
+void config_error_translator(mapnik::config_error const & ex)
+{
     PyErr_SetString(PyExc_RuntimeError, ex.what());
 }
 
-void value_error_translator(mapnik::value_error const & ex) {
+void value_error_translator(mapnik::value_error const & ex)
+{
     PyErr_SetString(PyExc_ValueError, ex.what());
+}
+
+void runtime_error_translator(std::runtime_error const & ex)
+{
+    PyErr_SetString(PyExc_RuntimeError, ex.what());
 }
 
 unsigned mapnik_version()
@@ -358,6 +366,7 @@ BOOST_PYTHON_MODULE(_mapnik)
 
     register_exception_translator<mapnik::config_error>(&config_error_translator);
     register_exception_translator<mapnik::value_error>(&value_error_translator);
+    register_exception_translator<std::runtime_error>(&runtime_error_translator);
     register_cairo();
     export_query();
     export_geometry();
@@ -607,12 +616,14 @@ BOOST_PYTHON_MODULE(_mapnik)
     def("has_cairo", &has_cairo, "Get cairo library status");
     def("has_pycairo", &has_pycairo, "Get pycairo module status");
 
+    python_optional<mapnik::stroke>();
     python_optional<mapnik::color>();
     python_optional<mapnik::box2d<double> >();
     python_optional<mapnik::datasource::geometry_t>();
     python_optional<std::string>();
     python_optional<unsigned>();
     python_optional<double>();
+    python_optional<float>();
     python_optional<bool>();
     python_optional<mapnik::text_transform_e>();
     register_ptr_to_python<mapnik::expression_ptr>();

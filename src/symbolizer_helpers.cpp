@@ -183,7 +183,7 @@ void text_symbolizer_helper<FaceManagerT, DetectorT>::initialize_geometries()
         geometry_type const& geom = feature_.get_geometry(i);
 
         // don't bother with empty geometries
-        if (geom.num_points() == 0) continue;
+        if (geom.size() == 0) continue;
         eGeomType type = geom.type();
         if (type == Polygon)
         {
@@ -236,7 +236,7 @@ void text_symbolizer_helper<FaceManagerT, DetectorT>::initialize_points()
         if (how_placed == VERTEX_PLACEMENT)
         {
             geom.rewind(0);
-            for(unsigned i = 0; i < geom.num_points(); i++)
+            for(unsigned i = 0; i < geom.size(); i++)
             {
                 geom.vertex(&label_x, &label_y);
                 prj_trans_.backward(label_x, label_y, z);
@@ -246,13 +246,17 @@ void text_symbolizer_helper<FaceManagerT, DetectorT>::initialize_points()
         }
         else
         {
-            if (how_placed == POINT_PLACEMENT)
+            if (geom.type() == LineString)
             {
-                geom.label_position(&label_x, &label_y);
+                label::middle_point(geom, label_x,label_y);
+            }
+            else if (how_placed == POINT_PLACEMENT)
+            {
+                label::centroid(geom, label_x, label_y);
             }
             else if (how_placed == INTERIOR_PLACEMENT)
             {
-                geom.label_interior_position(&label_x, &label_y);
+                label::interior_position(geom, label_x, label_y);
             }
             else
             {
@@ -281,8 +285,10 @@ bool text_symbolizer_helper<FaceManagerT, DetectorT>::next_placement()
     
     if (placement_->properties.orientation)
     {
+        // https://github.com/mapnik/mapnik/issues/1352
+        mapnik::evaluate<Feature, value_type> evaluator(feature_);
         angle_ = boost::apply_visitor(
-            evaluate<Feature, value_type>(feature_),
+            evaluator,
             *(placement_->properties.orientation)).to_double();
     } else {
         angle_ = 0.0;
@@ -407,7 +413,7 @@ bool shield_symbolizer_helper<FaceManagerT, DetectorT>::next_line_placement()
 template <typename FaceManagerT, typename DetectorT>
 void shield_symbolizer_helper<FaceManagerT, DetectorT>::init_marker()
 {
-   symbolizer_with_image_helper helper(sym_, this->feature_);
+   symbolizer_with_image_helper helper(sym_, this->feature_, this->text_.get_scale_factor());
    marker_ = helper.get_marker();
    if (marker_)
    {
@@ -460,46 +466,33 @@ agg::trans_affine const& shield_symbolizer_helper<FaceManagerT, DetectorT>::get_
 /*****************************************************************************/
 
 symbolizer_with_image_helper::symbolizer_with_image_helper(symbolizer_with_image const& sym,
-                                                           Feature const& feature)
+                                                           Feature const& feature,
+                                                           double scale_factor)
 {
-   std::string filename = path_processor_type::evaluate(*sym.get_filename(), feature);
-   
-   if ( !filename.empty() )
-   {
-      marker_ = marker_cache::instance()->find(filename, true);
-   }
-   else
-   {
-      marker_.reset(boost::make_shared<mapnik::marker>());
-   }
+    std::string filename = path_processor_type::evaluate(*sym.get_filename(), feature);
+    
+    if ( !filename.empty() )
+    {
+        marker_ = marker_cache::instance()->find(filename, true);
+    }
+    else
+    {
+        marker_.reset(boost::make_shared<mapnik::marker>());
+    }
 
-   evaluate_transform(tr_, feature, sym.get_image_transform());
+    evaluate_transform(tr_, feature, sym.get_image_transform());
+    tr_ = agg::trans_affine_scaling(scale_factor) * tr_;
 }
 
 box2d<double> symbolizer_with_image_helper::get_label_ext() const
 {
-   double w = (*marker_)->width();
-   double h = (*marker_)->height();
+    box2d<double> const& bbox = (*marker_)->bounding_box();
+    coord2d center = bbox.center();
 
-   double px0 = - 0.5 * w;
-   double py0 = - 0.5 * h;
-   double px1 = 0.5 * w;
-   double py1 = 0.5 * h;
-   double px2 = px1;
-   double py2 = py0;
-   double px3 = px0;
-   double py3 = py1;
-   
-   tr_.transform(&px0,&py0);
-   tr_.transform(&px1,&py1);
-   tr_.transform(&px2,&py2);
-   tr_.transform(&px3,&py3);
-   
-   box2d<double> label_ext (px0, py0, px1, py1);
-   label_ext.expand_to_include(px2, py2);
-   label_ext.expand_to_include(px3, py3);
-
-   return label_ext;
+    agg::trans_affine_translation recenter(-center.x, -center.y);
+    agg::trans_affine recenter_tr = recenter * tr_;
+    
+    return bbox * recenter_tr;
 }
 
 /*****************************************************************************/

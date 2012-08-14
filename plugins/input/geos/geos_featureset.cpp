@@ -40,14 +40,11 @@
 
 using mapnik::query;
 using mapnik::box2d;
-using mapnik::coord2d;
-using mapnik::CoordTransform;
 using mapnik::Feature;
 using mapnik::feature_ptr;
 using mapnik::geometry_utils;
 using mapnik::transcoder;
 using mapnik::feature_factory;
-
 
 geos_featureset::geos_featureset(GEOSGeometry* geometry,
                                  GEOSGeometry* extent,
@@ -117,10 +114,10 @@ feature_ptr geos_featureset::next()
                 {
                     feature_ptr feature(feature_factory::create(ctx_,identifier_));
 
-                    geometry_utils::from_wkb(feature->paths(),
+                    if (geometry_utils::from_wkb(feature->paths(),
                                              wkb.data(),
-                                             wkb.size());
-                    if (field_ != "")
+                                             wkb.size())
+                                             && field_ != "")
                     {
                         feature->put(field_name_, tr_->transcode(field_.c_str()));
                     }

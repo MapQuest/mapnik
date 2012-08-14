@@ -86,6 +86,13 @@ struct markers_symbolizer_pickle_suite : boost::python::pickle_suite
 
 };
 
+PyObject* get_fill_opacity_impl(markers_symbolizer & sym)
+{
+    boost::optional<float> fill_opacity = sym.get_fill_opacity();
+    if (fill_opacity)
+        return ::PyFloat_FromDouble(*fill_opacity);
+    Py_RETURN_NONE;
+}
 
 void export_markers_symbolizer()
 {
@@ -93,6 +100,7 @@ void export_markers_symbolizer()
 
     mapnik::enumeration_<mapnik::marker_placement_e>("marker_placement")
         .value("POINT_PLACEMENT",mapnik::MARKER_POINT_PLACEMENT)
+        .value("INTERIOR_PLACEMENT",mapnik::MARKER_INTERIOR_PLACEMENT)
         .value("LINE_PLACEMENT",mapnik::MARKER_LINE_PLACEMENT)
         ;
 
@@ -115,7 +123,11 @@ void export_markers_symbolizer()
         .add_property("opacity",
                       &markers_symbolizer::get_opacity,
                       &markers_symbolizer::set_opacity,
-                      "Set/get the text opacity")
+                      "Set/get the overall opacity")
+        .add_property("fill_opacity",
+                      &get_fill_opacity_impl,
+                      &markers_symbolizer::set_fill_opacity,
+                      "Set/get the fill opacity")
         .add_property("ignore_placement",
                       &markers_symbolizer::get_ignore_placement,
                       &markers_symbolizer::set_ignore_placement)

@@ -29,6 +29,7 @@
 #include <mapnik/font_engine_freetype.hpp>
 #include <mapnik/label_collision_detector.hpp>
 #include <mapnik/map.hpp>
+#include <mapnik/rule.hpp> // for all symbolizers
 
 // boost
 #include <boost/utility.hpp>
@@ -47,6 +48,7 @@ struct trans_affine;
 namespace mapnik {
 
 class marker;
+
 struct rasterizer;
 
 template <typename T>
@@ -124,6 +126,7 @@ protected:
                         double x, double y, double angle = 0.0);
     void debug_draw_box(box2d<double> const& extent,
                         double x, double y, double angle = 0.0);
+    void draw_geo_extent(box2d<double> const& extent,mapnik::color const& color);
 
 private:
     buffer_type & pixmap_;

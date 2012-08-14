@@ -25,11 +25,21 @@
 
 // mapnik
 #include <mapnik/datasource.hpp>
+#include <mapnik/params.hpp>
+#include <mapnik/query.hpp>
+#include <mapnik/feature.hpp>
 #include <mapnik/box2d.hpp>
+#include <mapnik/coord.hpp>
 #include <mapnik/feature_layer_desc.hpp>
 
 // boost
+#include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
+
+// stl
+#include <vector>
+#include <string>
 
 #include "connection_manager.hpp"
 #include "resultset.hpp"
@@ -51,7 +61,7 @@ public:
     postgis_datasource(const parameters &params, bool bind=true);
     ~postgis_datasource();
     mapnik::datasource::datasource_t type() const;
-    static std::string name();
+    static const char * name();
     featureset_ptr features(const query& q) const;
     featureset_ptr features_at_point(coord2d const& pt) const;
     mapnik::box2d<double> envelope() const;

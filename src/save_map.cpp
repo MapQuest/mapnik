@@ -21,6 +21,8 @@
  *****************************************************************************/
 
 // mapnik
+#include <mapnik/layer.hpp>
+#include <mapnik/feature_type_style.hpp>
 #include <mapnik/debug.hpp>
 #include <mapnik/save_map.hpp>
 #include <mapnik/map.hpp>
@@ -110,6 +112,11 @@ public:
         if ( sym.get_point_placement() != dfl.get_point_placement() || explicit_defaults_ )
         {
             set_attr( sym_node, "placement", sym.get_point_placement() );
+        }
+        if (sym.get_image_transform())
+        {
+            std::string tr_str = sym.get_image_transform_string();
+            set_attr( sym_node, "transform", tr_str );
         }
         serialize_symbolizer_base(sym_node, sym);
     }
@@ -236,9 +243,11 @@ public:
         {
             set_attr(sym_node, "unlock-image", sym.get_unlock_image());
         }
-        if (sym.get_text_opacity() != dfl.get_text_opacity() || explicit_defaults_)
+
+        if (sym.get_placement_options()->defaults.format.text_opacity !=
+                dfl.get_placement_options()->defaults.format.text_opacity || explicit_defaults_)
         {
-            set_attr(sym_node, "text-opacity", sym.get_text_opacity());
+            set_attr(sym_node, "text-opacity", sym.get_placement_options()->defaults.format.text_opacity);
         }
         position displacement = sym.get_shield_displacement();
         if (displacement.first != dfl.get_shield_displacement().first || explicit_defaults_)
@@ -248,6 +257,11 @@ public:
         if (displacement.second != dfl.get_shield_displacement().second || explicit_defaults_)
         {
             set_attr(sym_node, "shield-dy", displacement.second);
+        }
+        if (sym.get_image_transform())
+        {
+            std::string tr_str = sym.get_image_transform_string();
+            set_attr( sym_node, "transform", tr_str );
         }
         serialize_symbolizer_base(sym_node, sym);
     }
@@ -280,7 +294,6 @@ public:
         {
             set_attr( sym_node, "height", mapnik::to_expression_string(*sym.height()) );
         }
-
         serialize_symbolizer_base(sym_node, sym);
     }
 
@@ -313,6 +326,10 @@ public:
         if (sym.get_fill() != dfl.get_fill() || explicit_defaults_)
         {
             set_attr( sym_node, "fill", sym.get_fill() );
+        }
+        if (sym.get_fill_opacity() != dfl.get_fill_opacity() || explicit_defaults_)
+        {
+            set_attr( sym_node, "fill-opacity", sym.get_fill_opacity() );
         }
         if (sym.get_opacity() != dfl.get_opacity() || explicit_defaults_)
         {
@@ -518,7 +535,7 @@ private:
         }
         if ( strk.dash_offset() != dfl.dash_offset() || explicit_defaults_ )
         {
-            set_attr( node, "stroke-dash-offset", strk.dash_offset());
+            set_attr( node, "stroke-dashoffset", strk.dash_offset());
         }
         if ( ! strk.get_dash_array().empty() )
         {
@@ -792,6 +809,22 @@ void serialize_layer( ptree & map_node, const layer & layer, bool explicit_defau
         set_attr( layer_node, "group-by", layer.group_by() );
     }
 
+    int buffer_size = layer.buffer_size();
+    if ( buffer_size || explicit_defaults)
+    {
+        set_attr( layer_node, "buffer-size", buffer_size );
+    }
+
+    optional<box2d<double> > const& maximum_extent = layer.maximum_extent();
+    if ( maximum_extent)
+    {
+        std::ostringstream s;
+        s << std::setprecision(16)
+          << maximum_extent->minx() << "," << maximum_extent->miny() << ","
+          << maximum_extent->maxx() << "," << maximum_extent->maxy();
+        set_attr( layer_node, "maximum-extent", s.str() );
+    }
+
     std::vector<std::string> const& style_names = layer.styles();
     for (unsigned i = 0; i < style_names.size(); ++i)
     {
@@ -839,7 +872,7 @@ void serialize_map(ptree & pt, Map const & map, bool explicit_defaults)
         set_attr( map_node, "background-image", *image_filename );
     }
 
-    unsigned buffer_size = map.buffer_size();
+    int buffer_size = map.buffer_size();
     if ( buffer_size || explicit_defaults)
     {
         set_attr( map_node, "buffer-size", buffer_size );

@@ -23,7 +23,7 @@
 #ifndef MAPNIK_RULE_HPP
 #define MAPNIK_RULE_HPP
 
-// mapni
+// mapnik
 #include <mapnik/symbolizer_variant.hpp>
 #include <mapnik/feature.hpp>
 #include <mapnik/expression.hpp>

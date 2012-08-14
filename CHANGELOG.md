@@ -11,6 +11,13 @@ For a complete change history, see the git log.
 
 Not yet released
 
+- Added support for overriding fill, stroke, and opacity for svg markers using marker properties
+
+- Added support for setting opacity dynamically on images in polygon pattern and markers symbolizers
+
+- Added support for filtering on a features geometry type, either `point`, `linestring`, 'polygon`,
+  or `collection` using the expression keyword of `[mapnik::geometry_type]` (#546)
+
 - MarkersSymbolizer width and height moved to expressions (#1102)
 
 - Added style-level 'opacity' (#314)
@@ -50,6 +57,35 @@ Not yet released
 - Added support for output maps as tiff files (addresses #967 partially)
 
 - Added support for justify-alignment=auto. This is the new default. (#1125)
+
+
+## Mapnik 2.0.2
+
+Released Aug 3, 2012
+
+(Packaged from adb2ec741)
+
+- Fixed handling of empty WKB geometries (#1334)
+
+- Fixed naming of `stroke-dashoffset` in save_map (cc3cd5f63f28)
+
+- Fixed support for boost 1.50 (8dea5a5fe239233)
+
+- Fixed TextSymbolizer placement in Cairo backend so it respects avoid-edges and minimum-padding across all renderers (#1242)
+
+- Fixed ShieldSymbolizer placement so it respects avoid-edges and minimum-padding across all renderers (#1242)
+
+- Rolled back change made in 2.0.1 to marker width/height meaning that Mapnik > 2.0.2 will stick to assuming width/heigh are radii for back compatibility with 2.0.0. The reverted change is seen below as "Fix Markers rendering so that ellipse height/width units are pixels (previously were unintentionally radii)". Issue tracking this is #1163
+
+- XML: Fixed to avoid throwing if a `<Parameters>` element is encountered (which is supported in >= 2.1.x)
+
+- Support for PostGIS 2.0 in the pgsql2sqlite command (e69c44e/47e5b3c)
+
+- Fixed reference counting of Py_None when returning null attributes from Postgres during UTFGrid encoding, which could cause a Fatal Python error: deallocating None (#1221)
+
+- Fixed possible breakage registering plugins via python if a custom PREFIX or DESTDIR was used (e.g. macports/homebrew) (#1171)
+
+- Fixed memory leak in the case of proj >= 4.8 and a projection initialization error (#1173) 
 
 
 ## Mapnik 2.0.1

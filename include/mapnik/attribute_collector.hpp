@@ -49,6 +49,11 @@ struct expression_attributes : boost::static_visitor<void>
         boost::ignore_unused_variable_warning(x);
     }
 
+    void operator() (geometry_type_attribute const& type) const
+    {
+        // do nothing
+    }
+
     void operator() (attribute const& attr) const
     {
         names_.insert(attr.name());
@@ -249,7 +254,7 @@ public:
 
 struct directive_collector : public boost::static_visitor<>
 {
-    directive_collector(double * filter_factor)
+    directive_collector(double & filter_factor)
         : filter_factor_(filter_factor) {}
 
     template <typename T>
@@ -257,10 +262,10 @@ struct directive_collector : public boost::static_visitor<>
 
     void operator () (raster_symbolizer const& sym)
     {
-        *filter_factor_ = sym.calculate_filter_factor();
+        filter_factor_ = sym.calculate_filter_factor();
     }
 private:
-    double * filter_factor_;
+    double & filter_factor_;
 };
 
 inline void symbolizer_attributes::operator () (group_symbolizer const& sym)

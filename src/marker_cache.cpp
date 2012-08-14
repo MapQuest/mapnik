@@ -54,12 +54,12 @@ marker_cache::marker_cache()
     insert_svg("ellipse",
                "<?xml version='1.0' standalone='no'?>"
                "<svg width='100%' height='100%' version='1.1' xmlns='http://www.w3.org/2000/svg'>"
-               "<circle r='10' fill='#93a7ac' fill-opacity='.5' stroke='none'/>"
+               "<ellipse rx='5' ry='5' fill='#0000FF' stroke='black' stroke-width='.5'/>"
                "</svg>");
     insert_svg("arrow",
                "<?xml version='1.0' standalone='no'?>"
                "<svg width='100%' height='100%' version='1.1' xmlns='http://www.w3.org/2000/svg'>"
-               "<path fill='#93a7ac' fill-opacity='.5' d='m 31.698405,7.5302648 -8.910967,-6.0263712 0.594993,4.8210971 -18.9822542,0 0,2.4105482 18.9822542,0 -0.594993,4.8210971 z'/>"
+               "<path fill='#0000FF' stroke='black' stroke-width='.5' d='m 31.698405,7.5302648 -8.910967,-6.0263712 0.594993,4.8210971 -18.9822542,0 0,2.4105482 18.9822542,0 -0.594993,4.8210971 z'/>"
                "</svg>");
 }
 
@@ -144,7 +144,7 @@ boost::optional<marker_ptr> marker_cache::find(std::string const& uri,
             }
             std::string known_svg_string = mark_itr->second;
             using namespace mapnik::svg;
-            path_ptr marker_path(boost::make_shared<svg_storage_type>());
+            svg_path_ptr marker_path(boost::make_shared<svg_storage_type>());
             vertex_stl_adapter<svg_path_storage> stl_storage(marker_path->source());
             svg_path_adapter svg_path(stl_storage);
             svg_converter_type svg(svg_path, marker_path->attributes());
@@ -173,7 +173,7 @@ boost::optional<marker_ptr> marker_cache::find(std::string const& uri,
             if (is_svg(uri))
             {
                 using namespace mapnik::svg;
-                path_ptr marker_path(boost::make_shared<svg_storage_type>());
+                svg_path_ptr marker_path(boost::make_shared<svg_storage_type>());
                 vertex_stl_adapter<svg_path_storage> stl_storage(marker_path->source());
                 svg_path_adapter svg_path(stl_storage);
                 svg_converter_type svg(svg_path, marker_path->attributes());

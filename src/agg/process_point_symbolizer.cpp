@@ -24,18 +24,17 @@
 #include <mapnik/agg_renderer.hpp>
 #include <mapnik/agg_rasterizer.hpp>
 #include <mapnik/image_util.hpp>
-#include <mapnik/metawriter.hpp>
+
+#include <mapnik/geom_util.hpp>
+#include <mapnik/point_symbolizer.hpp>
+#include <mapnik/expression_evaluator.hpp>
 #include <mapnik/marker.hpp>
 #include <mapnik/marker_cache.hpp>
 #include <mapnik/expression_evaluator.hpp>
 #include <mapnik/symbolizer_helpers.hpp>
 
 // agg
-#include "agg_basics.h"
-#include "agg_rendering_buffer.h"
-#include "agg_pixfmt_rgba.h"
-#include "agg_rasterizer_scanline_aa.h"
-#include "agg_scanline_u.h"
+#include "agg_trans_affine.h"
 
 // stl
 #include <string>
@@ -50,7 +49,7 @@ void agg_renderer<T>::process(point_symbolizer const& sym,
                               mapnik::feature_impl & feature,
                               proj_transform const& prj_trans)
 {
-    symbolizer_with_image_helper helper(sym, feature);
+    symbolizer_with_image_helper helper(sym, feature, scale_factor_);
 
     if (helper.get_marker())
     {
@@ -64,27 +63,31 @@ void agg_renderer<T>::process(point_symbolizer const& sym,
             double y;
             double z=0;
             if (sym.get_point_placement() == CENTROID_POINT_PLACEMENT)
-                geom.label_position(&x, &y);
+                label::centroid(geom, x, y);
             else
-                geom.label_interior_position(&x, &y);
+                label::interior_position(geom ,x, y);
 
             prj_trans.backward(x,y,z);
             t_.forward(&x,&y);
             label_ext.re_center(x,y);
-
+            
             if (sym.get_allow_overlap() ||
                 detector_->has_placement(label_ext))
             {
-
-                render_marker(pixel_position(x, y), marker,
+                render_marker(pixel_position(x, y),
+                              marker,
                               helper.get_transform(),
                               sym.get_opacity(),
                               sym.comp_op());
 
+                if (/* DEBUG */ 0) {
+                    debug_draw_box(label_ext, 0, 0, 0.0);
+                }
+
                 if (!sym.get_ignore_placement())
                     detector_->insert(label_ext);
-                metawriter_with_properties writer = sym.get_metawriter();
-                if (writer.first) writer.first->add_box(label_ext, feature, t_, writer.second);
+                //metawriter_with_properties writer = sym.get_metawriter();
+                //if (writer.first) writer.first->add_box(label_ext, feature, t_, writer.second);
             }
         }
     }
@@ -96,4 +99,3 @@ template void agg_renderer<image_32>::process(point_symbolizer const&,
                                               proj_transform const&);
 
 }
-

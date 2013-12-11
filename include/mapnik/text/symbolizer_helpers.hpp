@@ -61,7 +61,8 @@ public:
                            CoordTransform const &t,
                            FaceManagerT &font_manager,
                            DetectorT &detector,
-                           box2d<double> const& query_extent);
+                           box2d<double> const& query_extent,
+                           bool use_default_marker = false);
 
     /** Return all placements.*/
     placements_list const& get();
@@ -97,7 +98,7 @@ protected:
     placement_finder finder_;
 
     //ShieldSymbolizer only
-    void init_marker();
+    void init_marker(bool use_default_marker);
 };
 
 } //namespace

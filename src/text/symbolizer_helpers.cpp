@@ -255,7 +255,8 @@ text_symbolizer_helper::text_symbolizer_helper(
         const proj_transform &prj_trans,
         unsigned width, unsigned height, double scale_factor,
         const CoordTransform &t, FaceManagerT &font_manager,
-        DetectorT &detector, const box2d<double> &query_extent)
+        DetectorT &detector, const box2d<double> &query_extent,
+        bool use_default_marker)
     : sym_(sym),
       feature_(feature),
       prj_trans_(prj_trans),
@@ -270,50 +271,53 @@ text_symbolizer_helper::text_symbolizer_helper(
     if (!geometries_to_process_.size()) return;
     finder_.next_position();
     initialize_points();
-    init_marker();
+    init_marker(use_default_marker);
 }
 
 
-void text_symbolizer_helper::init_marker()
+void text_symbolizer_helper::init_marker(bool use_default_marker)
 {
     //shield_symbolizer const& sym = static_cast<shield_symbolizer const&>(sym_);
     std::string filename = mapnik::get<std::string>(sym_, keys::file, feature_);
     //FIXME - need to test this
     //std::string filename = path_processor_type::evaluate(filename_string, feature_);
-    agg::trans_affine trans;
-    auto image_transform = get_optional<transform_type>(sym_, keys::image_transform);
-    if (image_transform) evaluate_transform(trans, feature_, *image_transform);
     boost::optional<marker_ptr> opt_marker; //TODO: Why boost::optional?
     if (!filename.empty())
     {
         opt_marker = marker_cache::instance().find(filename, true);
     }
+
+    // if a filename wasn't provided, then either quit now or use the
+    // default marker - depending on the argument. this unifies the
+    // handling of point and shield symbolizers; point allows default
+    // but shield does not.
     marker_ptr m;
-    if (opt_marker) m = *opt_marker;
+    if (opt_marker) 
+    {
+      m = *opt_marker;
+    }
+    else if (use_default_marker)
+    {
+      m = std::make_shared<mapnik::marker>();
+    }
     if (!m) return;
-    double width = m->width();
-    double height = m->height();
-    double px0 = - 0.5 * width;
-    double py0 = - 0.5 * height;
-    double px1 = 0.5 * width;
-    double py1 = 0.5 * height;
-    double px2 = px1;
-    double py2 = py0;
-    double px3 = px0;
-    double py3 = py1;
-    trans.transform(&px0, &py0);
-    trans.transform(&px1, &py1);
-    trans.transform(&px2, &py2);
-    trans.transform(&px3, &py3);
-    box2d<double> bbox(px0, py0, px1, py1);
-    bbox.expand_to_include(px2, py2);
-    bbox.expand_to_include(px3, py3);
+
+    agg::trans_affine trans;
+    auto image_transform = get_optional<transform_type>(sym_, keys::image_transform);
+    if (image_transform) evaluate_transform(trans, feature_, *image_transform);
+
+    box2d<double> const& bbox = m->bounding_box();
+    coord2d center = bbox.center();
+    agg::trans_affine_translation recenter(-center.x, -center.y);
+    box2d<double> label_ext = bbox * (recenter * trans); // TODO: scale factor?
+
     bool unlock_image = mapnik::get<value_bool>(sym_, keys::unlock_image, false);
     double shield_dx = mapnik::get<value_double>(sym_, keys::shield_dx, 0.0);
     double shield_dy = mapnik::get<value_double>(sym_, keys::shield_dy, 0.0);
+
     pixel_position marker_displacement;
     marker_displacement.set(shield_dx,shield_dy);
-    finder_.set_marker(std::make_shared<marker_info>(m, trans), bbox, unlock_image, marker_displacement);
+    finder_.set_marker(std::make_shared<marker_info>(m, trans), label_ext, unlock_image, marker_displacement);
 }
 
 template text_symbolizer_helper::text_symbolizer_helper(const text_symbolizer &sym,
@@ -336,5 +340,6 @@ template text_symbolizer_helper::text_symbolizer_helper(const shield_symbolizer 
     const CoordTransform &t,
     face_manager<freetype_engine> &font_manager,
     label_collision_detector4 &detector,
-    const box2d<double> &query_extent);
+    const box2d<double> &query_extent,
+    bool use_default_marker);
 } //namespace

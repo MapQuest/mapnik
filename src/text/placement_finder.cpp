@@ -268,15 +268,16 @@ double placement_finder::jalign_offset(double line_width) const //TODO
 
 bool placement_finder::find_point_placement(pixel_position const& pos)
 {
-    glyph_positions_ptr glyphs = std::make_shared<glyph_positions>();
-
     /* Find text origin. */
     pixel_position displacement = scale_factor_ * info_->properties.displacement + alignment_offset();
     if (info_->properties.rotate_displacement) displacement = displacement.rotate(!orientation_);
-    glyphs->set_base_point(pos + displacement);
+    pixel_position base_point = pos + displacement;
     box2d<double> bbox;
     rotated_box2d(bbox, orientation_, layout_.width(), layout_.height());
-    bbox.re_center(glyphs->get_base_point().x, glyphs->get_base_point().y);
+    bbox.re_center(base_point.x, base_point.y);
+
+    glyph_positions_ptr glyphs = std::make_shared<glyph_positions>();
+    glyphs->set_base_point(base_point);
 
     /* For point placements it is faster to just check the bounding box. */
     if (collision(bbox)) return false;

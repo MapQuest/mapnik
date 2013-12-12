@@ -40,9 +40,9 @@ class MAPNIK_DECL text_placements;
 class MAPNIK_DECL text_placement_info : mapnik::noncopyable
 {
 public:
-    /** Constructor. Takes the parent text_placements object as a parameter
-     * to read defaults from it. */
-    text_placement_info(text_placements const* parent, double scale_factor_);
+    /** Constructor. Takes a text symbolizer properties object to use
+      as the defaults. */
+    text_placement_info(text_symbolizer_properties const &defaults, double scale_factor_);
     /** Get next placement.
      * This function is also called before the first placement is tried.
      * Each class has to return at least one position!

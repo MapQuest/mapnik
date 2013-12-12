@@ -46,8 +46,12 @@ class MAPNIK_DECL text_placement_info_dummy : public text_placement_info
 {
 public:
 text_placement_info_dummy(text_placements_dummy const* parent, double scale_factor)
-    : text_placement_info(parent, scale_factor),
+    : text_placement_info(parent->defaults, scale_factor),
       state(0) {}
+
+explicit text_placement_info_dummy(double scale_factor)
+  : text_placement_info(text_symbolizer_properties(), scale_factor),
+    state(0) {}
 
     bool next();
 private:

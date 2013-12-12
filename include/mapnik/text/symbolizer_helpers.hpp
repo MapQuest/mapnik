@@ -33,13 +33,17 @@
 
 namespace mapnik {
 
+// forward declare used classes
+class label_collision_detector4;
+template <typename T> class face_manager;
+class freetype_engine;
+
 /** Helper object that does all the TextSymbolizer placement finding
  * work except actually rendering the object. */
 
 class text_symbolizer_helper
 {
 public:
-    template <typename FaceManagerT, typename DetectorT>
     text_symbolizer_helper(text_symbolizer const& sym,
                            feature_impl const& feature,
                            proj_transform const& prj_trans,
@@ -47,11 +51,10 @@ public:
                            unsigned height,
                            double scale_factor,
                            CoordTransform const& t,
-                           FaceManagerT &font_manager,
-                           DetectorT &detector,
+                           face_manager<freetype_engine> &font_manager,
+                           label_collision_detector4 &detector,
                            box2d<double> const& query_extent);
 
-    template <typename FaceManagerT, typename DetectorT>
     text_symbolizer_helper(shield_symbolizer const& sym,
                            feature_impl const& feature,
                            proj_transform const& prj_trans,
@@ -59,8 +62,20 @@ public:
                            unsigned height,
                            double scale_factor,
                            CoordTransform const &t,
-                           FaceManagerT &font_manager,
-                           DetectorT &detector,
+                           face_manager<freetype_engine> &font_manager,
+                           label_collision_detector4 &detector,
+                           box2d<double> const& query_extent,
+                           bool use_default_marker = false);
+
+    text_symbolizer_helper(point_symbolizer const& sym,
+                           feature_impl const& feature,
+                           proj_transform const& prj_trans,
+                           unsigned width,
+                           unsigned height,
+                           double scale_factor,
+                           CoordTransform const &t,
+                           face_manager<freetype_engine> &font_manager,
+                           label_collision_detector4 &detector,
                            box2d<double> const& query_extent,
                            bool use_default_marker = false);
 
@@ -73,7 +88,7 @@ protected:
     void initialize_points();
 
     //Input
-    text_symbolizer const& sym_;
+    symbolizer_base const& sym_;
     feature_impl const& feature_;
     proj_transform const& prj_trans_;
     CoordTransform const& t_;

@@ -308,7 +308,7 @@ struct TextPlacementInfoWrap: text_placement_info, wrapper<text_placement_info>
 {
     TextPlacementInfoWrap(text_placements const* parent,
                           double scale_factor_)
-        : text_placement_info(parent, scale_factor_)
+        : text_placement_info(parent->defaults, scale_factor_)
     {
 
     }

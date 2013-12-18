@@ -133,7 +133,33 @@ enum text_upright
 DEFINE_ENUM(text_upright_e, text_upright);
 
 class text_layout;
+class symbolizer_base;
 
+struct MAPNIK_DECL collidable_properties
+{
+    // constructs and sets up default properties.
+    collidable_properties();
+    // constructs and sets properties from a symbolizer instance.
+    explicit collidable_properties(symbolizer_base const &);
+
+    // if true, don't place collidable where it would cross the
+    // edge of the map area.
+    bool avoid_edges;
+    // minimum allowed distance between this collidable object
+    // and any existing placed bbox.
+    double minimum_distance;
+    // minimum distance between this collidable object and the
+    // edge of the map extent.
+    double minimum_padding;
+    // if true, allow placement even if this collidable object
+    // is within the minimum distance of another existing
+    // placement.
+    bool allow_overlap;
+    // if true, do not add this collidable object's bbox to the
+    // existing placements. i.e: allow it to be overlapped by
+    // everything else.
+    bool ignore_placement;
+};
 
 /** Contains all text symbolizer properties which are not directly related to text formatting. */
 struct MAPNIK_DECL text_symbolizer_properties
@@ -169,14 +195,10 @@ struct MAPNIK_DECL text_symbolizer_properties
     double label_spacing;
     /** distance the label can be moved on the line to fit, if 0 the default is used */
     double label_position_tolerance;
-    bool avoid_edges;
-    double minimum_distance;
-    double minimum_padding;
     double minimum_path_length;
     double max_char_angle_delta;
     /** Always try render an odd amount of labels */
     bool force_odd_labels;
-    bool allow_overlap;
     /** Only consider geometry with largest bbox (polygons) */
     bool largest_bbox_only;
     double text_ratio;

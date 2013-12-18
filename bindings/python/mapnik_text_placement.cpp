@@ -395,6 +395,14 @@ void export_text_placement()
                             init<>())
         ;
 
+    class_with_converter<collidable_properties>
+        ("CollidableProperties")
+        .def_readwrite("avoid_edges", &collidable_properties::avoid_edges)
+        .def_readwrite("minimum_distance", &collidable_properties::minimum_distance)
+        .def_readwrite("minimum_padding", &collidable_properties::minimum_padding)
+        .def_readwrite("allow_overlap", &collidable_properties::allow_overlap)
+        .def_readwrite("ignore_placement", &collidable_properties::ignore_placement)
+        ;
 
     class_with_converter<text_symbolizer_properties>
         ("TextSymbolizerProperties")
@@ -408,13 +416,9 @@ void export_text_placement()
                       &set_displacement)
         .def_readwrite("label_spacing", &text_symbolizer_properties::label_spacing)
         .def_readwrite("label_position_tolerance", &text_symbolizer_properties::label_position_tolerance)
-        .def_readwrite("avoid_edges", &text_symbolizer_properties::avoid_edges)
-        .def_readwrite("minimum_distance", &text_symbolizer_properties::minimum_distance)
-        .def_readwrite("minimum_padding", &text_symbolizer_properties::minimum_padding)
         .def_readwrite("minimum_path_length", &text_symbolizer_properties::minimum_path_length)
         .def_readwrite("maximum_angle_char_delta", &text_symbolizer_properties::max_char_angle_delta)
         .def_readwrite("force_odd_labels", &text_symbolizer_properties::force_odd_labels)
-        .def_readwrite("allow_overlap", &text_symbolizer_properties::allow_overlap)
         .def_readwrite("largest_bbox_only", &text_symbolizer_properties::largest_bbox_only)
         .def_readwrite("text_ratio", &text_symbolizer_properties::text_ratio)
         .def_readwrite("wrap_width", &text_symbolizer_properties::wrap_width)

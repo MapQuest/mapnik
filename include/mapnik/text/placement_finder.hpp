@@ -48,7 +48,8 @@ public:
                         box2d<double> const& extent,
                         text_placement_info_ptr placement_info,
                         face_manager_freetype & font_manager,
-                        double scale_factor);
+                        double scale_factor,
+                        collidable_properties const &cprops);
 
     /** Try to place a single label at the given point. */
     bool find_point_placement(pixel_position const& pos);
@@ -106,6 +107,8 @@ private:
     box2d<double> marker_box_;
     bool marker_unlocked_;
     pixel_position marker_displacement_;
+  
+    collidable_properties collidable_properties_;
 };
 
 }//ns mapnik

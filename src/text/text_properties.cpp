@@ -107,13 +107,9 @@ text_symbolizer_properties::text_symbolizer_properties() :
     valign(V_AUTO),
     label_spacing(0.0),
     label_position_tolerance(0.0),
-    avoid_edges(false),
-    minimum_distance(0.0),
-    minimum_padding(0.0),
     minimum_path_length(0.0),
     max_char_angle_delta(22.5 * M_PI/180.0),
     force_odd_labels(false),
-    allow_overlap(false),
     largest_bbox_only(true),
     text_ratio(0.0),
     wrap_width(0.0),
@@ -167,16 +163,8 @@ void text_symbolizer_properties::from_xml(xml_node const &sym, fontset_map const
         spacing_ = sym.get_opt_attr<double>("label-spacing");
         if (spacing_) label_spacing = *spacing_;
     }
-    optional<double> minimum_distance_ = sym.get_opt_attr<double>("minimum-distance");
-    if (minimum_distance_) minimum_distance = *minimum_distance_;
-    optional<double> min_padding_ = sym.get_opt_attr<double>("minimum-padding");
-    if (min_padding_) minimum_padding = *min_padding_;
     optional<double> min_path_length_ = sym.get_opt_attr<double>("minimum-path-length");
     if (min_path_length_) minimum_path_length = *min_path_length_;
-    optional<boolean> avoid_edges_ = sym.get_opt_attr<boolean>("avoid-edges");
-    if (avoid_edges_) avoid_edges = *avoid_edges_;
-    optional<boolean> allow_overlap_ = sym.get_opt_attr<boolean>("allow-overlap");
-    if (allow_overlap_) allow_overlap = *allow_overlap_;
     optional<boolean> largest_bbox_only_ = sym.get_opt_attr<boolean>("largest-bbox-only");
     if (largest_bbox_only_) largest_bbox_only = *largest_bbox_only_;
     optional<horizontal_alignment_e> halign_ = sym.get_opt_attr<horizontal_alignment_e>("horizontal-alignment");
@@ -257,25 +245,9 @@ void text_symbolizer_properties::to_xml(boost::property_tree::ptree &node,
     {
         set_attr(node, "spacing", label_spacing);
     }
-    if (minimum_distance != dfl.minimum_distance || explicit_defaults)
-    {
-        set_attr(node, "minimum-distance", minimum_distance);
-    }
-    if (minimum_padding != dfl.minimum_padding || explicit_defaults)
-    {
-        set_attr(node, "minimum-padding", minimum_padding);
-    }
     if (minimum_path_length != dfl.minimum_path_length || explicit_defaults)
     {
         set_attr(node, "minimum-path-length", minimum_path_length);
-    }
-    if (allow_overlap != dfl.allow_overlap || explicit_defaults)
-    {
-        set_attr(node, "allow-overlap", allow_overlap);
-    }
-    if (avoid_edges != dfl.avoid_edges || explicit_defaults)
-    {
-        set_attr(node, "avoid-edges", avoid_edges);
     }
     if (largest_bbox_only != dfl.largest_bbox_only|| explicit_defaults)
     {
@@ -434,6 +406,24 @@ void char_properties::to_xml(boost::property_tree::ptree &node, bool explicit_de
     {
         set_attr(node, "opacity", text_opacity);
     }
+}
+
+collidable_properties::collidable_properties()
+  : avoid_edges     (false),
+    minimum_distance(0.0),
+    minimum_padding (0.0),
+    allow_overlap   (false),
+    ignore_placement(false)
+{
+}
+
+collidable_properties::collidable_properties(symbolizer_base const &sym)
+  : avoid_edges     (get<bool>  (sym, keys::avoid_edges,      false)),
+    minimum_distance(get<double>(sym, keys::minimum_distance, 0.0)),
+    minimum_padding (get<double>(sym, keys::minimum_padding,  0.0)),
+    allow_overlap   (get<bool>  (sym, keys::allow_overlap,    false)),
+    ignore_placement(get<bool>  (sym, keys::ignore_placement, false))
+{
 }
 
 } //ns mapnik

@@ -110,6 +110,7 @@ protected:
     bool points_on_line_;
 
     text_placement_info_ptr placement_;
+    collidable_properties collidable_properties_;
     placement_finder finder_;
 
     //ShieldSymbolizer only

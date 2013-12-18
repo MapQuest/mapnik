@@ -95,6 +95,7 @@ private:
     void parse_style(Map & map, xml_node const& sty);
     void parse_layer(Map & map, xml_node const& lay);
     void parse_symbolizer_base(symbolizer_base &sym, xml_node const& pt);
+    void parse_collidable_properties(symbolizer_base &sym, xml_node const &pt);
 
     void parse_fontset(Map & map, xml_node const & fset);
     bool parse_font(font_set & fset, xml_node const& f);
@@ -928,21 +929,31 @@ void map_parser::parse_symbolizer_base(symbolizer_base &sym, xml_node const &pt)
     set_symbolizer_property<symbolizer_base,double>(sym, keys::smooth, pt);
 }
 
+void map_parser::parse_collidable_properties(symbolizer_base &symbol, xml_node const &sym)
+{
+    optional<boolean> avoid_edges = sym.get_opt_attr<boolean>("avoid-edges");
+    if (avoid_edges) put(symbol, keys::avoid_edges, *avoid_edges);
+    optional<double> minimum_distance = sym.get_opt_attr<double>("minimum-distance");
+    if (minimum_distance) put(symbol, keys::minimum_distance, *minimum_distance);
+    optional<double> min_padding = sym.get_opt_attr<double>("minimum-padding");
+    if (min_padding) put(symbol, keys::minimum_padding, *min_padding);
+    optional<boolean> allow_overlap = sym.get_opt_attr<boolean>("allow-overlap");
+    if (allow_overlap) put(symbol, keys::allow_overlap, *allow_overlap);
+    optional<boolean> ignore_placement = sym.get_opt_attr<boolean>("ignore-placement");
+    if (ignore_placement) put(symbol, keys::ignore_placement, *ignore_placement);
+}
+
 void map_parser::parse_point_symbolizer(rule & rule, xml_node const & sym)
 {
     try
     {
         optional<std::string> file = sym.get_opt_attr<std::string>("file");
         optional<std::string> base = sym.get_opt_attr<std::string>("base");
-        optional<boolean> allow_overlap = sym.get_opt_attr<boolean>("allow-overlap");
-        optional<boolean> ignore_placement = sym.get_opt_attr<boolean>("ignore-placement");
         optional<double> opacity = sym.get_opt_attr<double>("opacity");
         optional<std::string> image_transform_wkt = sym.get_opt_attr<std::string>("transform");
 
         point_symbolizer symbol;
-        if (allow_overlap) put(symbol, keys::allow_overlap, *allow_overlap);
         if (opacity) put(symbol, keys::opacity, *opacity);
-        if (ignore_placement) put(symbol,keys::ignore_placement, *ignore_placement);
 
         boost::optional<point_placement_e> placement = sym.get_opt_attr<point_placement_e>("placement");
         if (placement) put(symbol, keys::point_placement_type, point_placement_enum(*placement));
@@ -974,6 +985,7 @@ void map_parser::parse_point_symbolizer(rule & rule, xml_node const & sym)
             }
         }
         parse_symbolizer_base(symbol, sym);
+        parse_collidable_properties(symbol, sym);
         rule.append(std::move(symbol));
     }
     catch (config_error const& ex)
@@ -1207,6 +1219,7 @@ void map_parser::parse_text_symbolizer(rule & rule, xml_node const& sym)
         }
         text_symbolizer text_symbol;
         parse_symbolizer_base(text_symbol, sym);
+        parse_collidable_properties(text_symbol, sym);
         put<text_placements_ptr>(text_symbol, keys::text_placements_, placement_finder);
         optional<halo_rasterizer_e> halo_rasterizer_ = sym.get_opt_attr<halo_rasterizer_e>("halo-rasterizer");
         if (halo_rasterizer_) put(text_symbol, keys::halo_rasterizer, halo_rasterizer_enum(*halo_rasterizer_));
@@ -1300,6 +1313,7 @@ void map_parser::parse_shield_symbolizer(rule & rule, xml_node const& sym)
         ensure_exists(file);
         put(shield_symbol, keys::file , parse_path(file, sym.get_tree().path_expr_grammar));
         parse_symbolizer_base(shield_symbol, sym);
+        parse_collidable_properties(shield_symbol, sym);
         rule.append(std::move(shield_symbol));
     }
     catch (config_error const& ex)

@@ -125,7 +125,8 @@ placement_finder::placement_finder(feature_impl const& feature,
                                    box2d<double> const& extent,
                                    text_placement_info_ptr placement_info,
                                    face_manager_freetype & font_manager,
-                                   double scale_factor)
+                                   double scale_factor,
+                                   collidable_properties const &cprops)
     : feature_(feature),
       detector_(detector),
       extent_(extent),
@@ -136,7 +137,8 @@ placement_finder::placement_finder(feature_impl const& feature,
       placements_(),
       has_marker_(false),
       marker_(),
-      marker_box_()
+      marker_box_(),
+      collidable_properties_(cprops)
 {
 }
 
@@ -283,7 +285,9 @@ bool placement_finder::find_point_placement(pixel_position const& pos)
     if (collision(bbox)) return false;
     /* add_marker first checks for collision and then updates the detector.*/
     if (has_marker_ && !add_marker(glyphs, pos)) return false;
-    if (layout_.num_lines()) detector_.insert(bbox, layout_.text());
+    if (layout_.num_lines() && !collidable_properties_.ignore_placement) {
+        detector_.insert(bbox, layout_.text());
+    }
 
     /* IMPORTANT NOTE:
        x and y are relative to the center of the text
@@ -490,9 +494,12 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
             return false;
         }
     }
-    for (box2d<double> const& bbox : bboxes)
+    if (!collidable_properties_.ignore_placement)
     {
-        detector_.insert(bbox, layout_.text());
+        for (box2d<double> const& bbox : bboxes)
+        {
+            detector_.insert(bbox, layout_.text());
+        }
     }
     placements_.push_back(glyphs);
     return true;
@@ -545,13 +552,13 @@ bool placement_finder::collision(const box2d<double> &box) const
 {
     if (!detector_.extent().intersects(box)
             ||
-        (info_->properties.avoid_edges && !extent_.contains(box))
+        (collidable_properties_.avoid_edges && !extent_.contains(box))
             ||
-        (info_->properties.minimum_padding > 0 &&
-         !extent_.contains(box + (scale_factor_ * info_->properties.minimum_padding)))
+        (collidable_properties_.minimum_padding > 0 &&
+         !extent_.contains(box + (scale_factor_ * collidable_properties_.minimum_padding)))
             ||
-        (!info_->properties.allow_overlap &&
-         !detector_.has_point_placement(box, info_->properties.minimum_distance * scale_factor_))
+        (!collidable_properties_.allow_overlap &&
+         !detector_.has_point_placement(box, collidable_properties_.minimum_distance * scale_factor_))
         )
     {
         return true;
@@ -576,7 +583,7 @@ bool placement_finder::add_marker(glyph_positions_ptr glyphs, pixel_position con
     bbox.move(real_pos.x, real_pos.y);
     glyphs->set_marker(marker_, real_pos);
     if (collision(bbox)) return false;
-    detector_.insert(bbox);
+    if (!collidable_properties_.ignore_placement) detector_.insert(bbox);
     return true;
 }
 

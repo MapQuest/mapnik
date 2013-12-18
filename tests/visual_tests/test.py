@@ -213,7 +213,11 @@ files = {
     'colorize-alpha3':{'sizes':[(512,512)]},
     'image-filters-galore':{'sizes':[(512,512)]},
     'image-filters-multi-blur':{'sizes':[(512,512)]},
-    'line-opacity-multi-render':{'sizes':[(512,512)]}
+    'line-opacity-multi-render':{'sizes':[(512,512)]},
+    'point-placement':{
+        'sizes':[(256,104)],
+        'bbox':mapnik.Box2d(-1.199145, 0.051392, 0.212420, 0.623555)
+        }
     }
 
 class Reporting:

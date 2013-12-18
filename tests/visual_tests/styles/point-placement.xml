@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE Map>
+<Map background-color="white" srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
+
+  <Layer name="layer" srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs">
+    <StyleName>background</StyleName>
+    <StyleName>foreground</StyleName>
+    <Datasource>
+      <Parameter name="type">csv</Parameter>
+      <Parameter name="file">../data/polygons.csv</Parameter>
+    </Datasource>
+  </Layer>
+  
+  <Style name="background">
+    <Rule>
+      <Filter>[mapnik::geometry_type]=polygon</Filter>
+      <PolygonSymbolizer fill="#d0d0d0"/>
+    </Rule>
+  </Style>
+  
+  <Style name="foreground">
+    <Rule>
+      <Filter>[nr]=1</Filter>
+      <PointSymbolizer/>
+    </Rule>
+    <Rule>
+      <Filter>[nr]=2</Filter>
+      <PointSymbolizer placement="interior"/>
+    </Rule>
+    <Rule>
+      <Filter>[nr]=3</Filter>
+      <PointSymbolizer placement="centroid"/>
+    </Rule>
+  </Style>
+</Map>

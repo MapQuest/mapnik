@@ -85,7 +85,7 @@ protected:
     bool next_point_placement();
     bool next_line_placement(bool clipped);
     void initialize_geometries();
-    void initialize_points();
+    void initialize_points(label_placement_enum how_placed);
 
     //Input
     symbolizer_base const& sym_;

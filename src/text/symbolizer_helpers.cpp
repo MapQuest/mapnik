@@ -58,7 +58,7 @@ text_symbolizer_helper::text_symbolizer_helper(const text_symbolizer &sym, const
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
     finder_.next_position();
-    initialize_points();
+    initialize_points(placement_->properties.label_placement);
 }
 
 placements_list const& text_symbolizer_helper::get()
@@ -185,9 +185,8 @@ void text_symbolizer_helper::initialize_geometries()
     geo_itr_ = geometries_to_process_.begin();
 }
 
-void text_symbolizer_helper::initialize_points()
+void text_symbolizer_helper::initialize_points(label_placement_enum how_placed)
 {
-    label_placement_enum how_placed = placement_->properties.label_placement;
     if (how_placed == LINE_PLACEMENT)
     {
         point_placement_ = false;
@@ -273,7 +272,7 @@ text_symbolizer_helper::text_symbolizer_helper(
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
     finder_.next_position();
-    initialize_points();
+    initialize_points(placement_->properties.label_placement);
     init_marker(use_default_marker);
 }
 
@@ -298,7 +297,11 @@ text_symbolizer_helper::text_symbolizer_helper(
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
     finder_.next_position();
-    initialize_points();
+    // TODO: need a better way of converting point placement to label
+    // placement (or get rid of the difference entirely).
+    auto point_placement = mapnik::get<point_placement_enum>(sym, keys::point_placement_type, feature, CENTROID_POINT_PLACEMENT);
+    label_placement_enum label_placement = (point_placement == INTERIOR_POINT_PLACEMENT ? INTERIOR_PLACEMENT : POINT_PLACEMENT);
+    initialize_points(label_placement);
     init_marker(use_default_marker);
 }
 

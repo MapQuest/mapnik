@@ -34,6 +34,7 @@
 #include <mapnik/marker.hpp> // for svg_storage_type
 #include <mapnik/svg/svg_storage.hpp>
 #include <mapnik/markers_placement.hpp>
+#include <mapnik/vertex_converters.hpp>
 
 // agg
 #include "agg_ellipse.h"
@@ -400,7 +401,7 @@ void build_ellipse(T const& sym, mapnik::feature_impl const& feature, svg_storag
 }
 
 template <typename Attr>
-bool push_explicit_style(Attr const& src, Attr & dst, markers_symbolizer const& sym)
+bool push_explicit_style(Attr const& src, Attr & dst, symbolizer_base const& sym)
 {
     auto fill_color = get_optional<color>(sym, keys::fill);
     auto fill_opacity = get_optional<double>(sym, keys::fill_opacity);

@@ -64,8 +64,7 @@ public:
                            CoordTransform const &t,
                            face_manager<freetype_engine> &font_manager,
                            label_collision_detector4 &detector,
-                           box2d<double> const& query_extent,
-                           bool use_default_marker = false);
+                           box2d<double> const& query_extent);
 
     text_symbolizer_helper(point_symbolizer const& sym,
                            feature_impl const& feature,
@@ -76,8 +75,18 @@ public:
                            CoordTransform const &t,
                            face_manager<freetype_engine> &font_manager,
                            label_collision_detector4 &detector,
-                           box2d<double> const& query_extent,
-                           bool use_default_marker = false);
+                           box2d<double> const& query_extent);
+
+    text_symbolizer_helper(markers_symbolizer const& sym,
+                           feature_impl const& feature,
+                           proj_transform const& prj_trans,
+                           unsigned width,
+                           unsigned height,
+                           double scale_factor,
+                           CoordTransform const &t,
+                           face_manager<freetype_engine> &font_manager,
+                           label_collision_detector4 &detector,
+                           box2d<double> const& query_extent);
 
     /** Return all placements.*/
     placements_list const& get();
@@ -114,7 +123,7 @@ protected:
     placement_finder finder_;
 
     //ShieldSymbolizer only
-    void init_marker(bool use_default_marker);
+    void init_marker(boost::optional<std::string> default_marker);
 };
 
 } //namespace

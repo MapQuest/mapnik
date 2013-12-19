@@ -33,7 +33,7 @@
 #include <mapnik/text/placement_finder.hpp>
 #include <mapnik/text/placements/base.hpp>
 #include <mapnik/text/placements/dummy.hpp>
-
+#include <mapnik/marker_helpers.hpp>
 
 //agg
 #include "agg_conv_clip_polyline.h"
@@ -256,8 +256,7 @@ text_symbolizer_helper::text_symbolizer_helper(
         const proj_transform &prj_trans,
         unsigned width, unsigned height, double scale_factor,
         const CoordTransform &t, FaceManagerT &font_manager,
-        DetectorT &detector, const box2d<double> &query_extent,
-        bool use_default_marker)
+        DetectorT &detector, const box2d<double> &query_extent)
     : sym_(sym),
       feature_(feature),
       prj_trans_(prj_trans),
@@ -273,7 +272,7 @@ text_symbolizer_helper::text_symbolizer_helper(
     if (!geometries_to_process_.size()) return;
     finder_.next_position();
     initialize_points(placement_->properties.label_placement);
-    init_marker(use_default_marker);
+    init_marker(boost::none);
 }
 
 text_symbolizer_helper::text_symbolizer_helper(
@@ -281,8 +280,7 @@ text_symbolizer_helper::text_symbolizer_helper(
         const proj_transform &prj_trans,
         unsigned width, unsigned height, double scale_factor,
         const CoordTransform &t, FaceManagerT &font_manager,
-        DetectorT &detector, const box2d<double> &query_extent,
-        bool use_default_marker)
+        DetectorT &detector, const box2d<double> &query_extent)
     : sym_(sym),
       feature_(feature),
       prj_trans_(prj_trans),
@@ -302,19 +300,66 @@ text_symbolizer_helper::text_symbolizer_helper(
     auto point_placement = mapnik::get<point_placement_enum>(sym, keys::point_placement_type, feature, CENTROID_POINT_PLACEMENT);
     label_placement_enum label_placement = (point_placement == INTERIOR_POINT_PLACEMENT ? INTERIOR_PLACEMENT : POINT_PLACEMENT);
     initialize_points(label_placement);
-    init_marker(use_default_marker);
+    init_marker(std::string());
 }
 
-void text_symbolizer_helper::init_marker(bool use_default_marker)
+text_symbolizer_helper::text_symbolizer_helper(
+        const markers_symbolizer &sym, const feature_impl &feature,
+        const proj_transform &prj_trans,
+        unsigned width, unsigned height, double scale_factor,
+        const CoordTransform &t, FaceManagerT &font_manager,
+        DetectorT &detector, const box2d<double> &query_extent)
+    : sym_(sym),
+      feature_(feature),
+      prj_trans_(prj_trans),
+      t_(t),
+      dims_(0, 0, width, height),
+      query_extent_(query_extent),
+      points_on_line_(false),
+      placement_(std::make_shared<text_placement_info_dummy>(scale_factor)),
+      collidable_properties_(sym),
+      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_)
 {
-    //shield_symbolizer const& sym = static_cast<shield_symbolizer const&>(sym_);
-    std::string filename = mapnik::get<std::string>(sym_, keys::file, feature_);
+    initialize_geometries();
+    if (!geometries_to_process_.size()) return;
+    finder_.next_position();
+    // TODO: need a better way of converting marker placement to label
+    // placement (or get rid of the difference entirely).
+    marker_placement_enum marker_placement = mapnik::get<marker_placement_enum>(sym_, keys::markers_placement_type, MARKER_POINT_PLACEMENT);
+    label_placement_enum label_placement = POINT_PLACEMENT;
+
+    switch (marker_placement) {
+    case MARKER_POINT_PLACEMENT:
+        label_placement = POINT_PLACEMENT; break;
+
+    case MARKER_INTERIOR_PLACEMENT:
+        label_placement = INTERIOR_PLACEMENT; break;
+
+    case MARKER_LINE_PLACEMENT:
+        label_placement = LINE_PLACEMENT; break;
+
+    default:
+        // TODO: warn.
+        break;
+    }
+
+    initialize_points(label_placement);
+    init_marker(std::string("shape://ellipse"));
+}
+
+void text_symbolizer_helper::init_marker(boost::optional<std::string> default_marker)
+{
+    boost::optional<std::string> filename = mapnik::get_optional<std::string>(sym_, keys::file, feature_);
+    if (!filename)
+    {
+        filename = default_marker;
+    }
     //FIXME - need to test this
     //std::string filename = path_processor_type::evaluate(filename_string, feature_);
     boost::optional<marker_ptr> opt_marker; //TODO: Why boost::optional?
-    if (!filename.empty())
+    if (filename && !filename->empty())
     {
-        opt_marker = marker_cache::instance().find(filename, true);
+        opt_marker = marker_cache::instance().find(*filename, true);
     }
 
     // if a filename wasn't provided, then either quit now or use the
@@ -326,7 +371,7 @@ void text_symbolizer_helper::init_marker(bool use_default_marker)
     {
       m = *opt_marker;
     }
-    else if (use_default_marker)
+    else if (default_marker)
     {
       m = std::make_shared<mapnik::marker>();
     }
@@ -345,6 +390,25 @@ void text_symbolizer_helper::init_marker(bool use_default_marker)
     bool unlock_image = mapnik::get<value_bool>(sym_, keys::unlock_image, false);
     double shield_dx = mapnik::get<value_double>(sym_, keys::shield_dx, 0.0);
     double shield_dy = mapnik::get<value_double>(sym_, keys::shield_dy, 0.0);
+
+    if (m->is_vector())
+    {
+        using namespace mapnik::svg;
+        typedef agg::pod_bvector<path_attributes> svg_attribute_type;
+
+        svg_path_ptr path = *(m->get_vector_data());
+        svg_attribute_type attributes;
+        bool result = push_explicit_style(path->attributes(), attributes, sym_);
+        if (result)
+        {
+          auto new_path = std::make_shared<svg_storage_type>();
+          new_path->source() = path->source();
+          new_path->attributes() = attributes;
+          new_path->set_bounding_box(path->bounding_box());
+          new_path->set_dimensions(path->width(), path->height());
+          m = std::make_shared<marker>(new_path);
+        }
+    }
 
     pixel_position marker_displacement;
     marker_displacement.set(shield_dx,shield_dy);

@@ -39,7 +39,7 @@ void render_point_symbolizer(point_symbolizer const &sym,
         common.width_, common.height_,
         common.scale_factor_,
         common.t_, common.font_manager_, *common.detector_,
-        common.query_extent_, true);
+        common.query_extent_);
     
     double opacity = get<double>(sym,keys::opacity,feature, 1.0);
 

@@ -89,7 +89,10 @@ static const property_meta_type key_meta[static_cast<unsigned>(keys::MAX_SYMBOLI
       [](enumeration_wrapper e) { return enumeration<marker_multi_policy_enum,marker_multi_policy_enum_MAX>(marker_multi_policy_enum(e.value)).as_string();}}, // FIXME - better naming ^^
     property_meta_type{ "placement", enumeration_wrapper(CENTROID_POINT_PLACEMENT),
       [](enumeration_wrapper e) { return enumeration<point_placement_enum,point_placement_enum_MAX>(point_placement_enum(e.value)).as_string();}},
-    property_meta_type{ "raster-colorizer", nullptr, nullptr }
+    property_meta_type{ "raster-colorizer", nullptr, nullptr },
+    property_meta_type{ "num-columns", static_cast<value_integer>(0), nullptr},
+    property_meta_type{ "start-column", static_cast<value_integer>(1), nullptr},
+    property_meta_type{ "symbolizer-properties", nullptr, nullptr}
 };
 
 property_meta_type const& get_meta(mapnik::keys key)

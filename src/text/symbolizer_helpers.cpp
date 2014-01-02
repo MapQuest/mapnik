@@ -362,12 +362,31 @@ void text_symbolizer_helper::init_marker(boost::optional<std::string> default_ma
         opt_marker = marker_cache::instance().find(*filename, true);
     }
 
+    bool unlock_image = mapnik::get<value_bool>(sym_, keys::unlock_image, false);
+    double shield_dx = mapnik::get<value_double>(sym_, keys::shield_dx, 0.0);
+    double shield_dy = mapnik::get<value_double>(sym_, keys::shield_dy, 0.0);
+    auto width_expr = get_optional<expression_ptr>(sym_, keys::width);
+    auto height_expr = get_optional<expression_ptr>(sym_, keys::height);
+
     // if a filename wasn't provided, then either quit now or use the
     // default marker - depending on the argument. this unifies the
     // handling of point and shield symbolizers; point allows default
     // but shield does not.
     marker_ptr m;
-    if (opt_marker) 
+    if (filename && (*filename == "shape://ellipse") && (width_expr || height_expr))
+    {
+      using namespace mapnik::svg;
+      svg_path_ptr marker_ellipse = std::make_shared<svg_storage_type>();
+      vertex_stl_adapter<svg_path_storage> stl_storage(marker_ellipse->source());
+      svg_path_adapter svg_path(stl_storage);
+      build_ellipse(sym_, feature_, *marker_ellipse, svg_path);
+      if (opt_marker && (*opt_marker) && (*opt_marker)->get_vector_data()) {
+        svg_path_ptr path = *((*opt_marker)->get_vector_data());
+        marker_ellipse->attributes() = path->attributes();
+      }
+      m = std::make_shared<marker>(marker_ellipse);
+    }
+    else if (opt_marker) 
     {
       m = *opt_marker;
     }
@@ -382,14 +401,12 @@ void text_symbolizer_helper::init_marker(boost::optional<std::string> default_ma
     if (image_transform) evaluate_transform(trans, feature_, *image_transform);
 
     box2d<double> const& bbox = m->bounding_box();
+    setup_transform_scaling(trans, bbox.width(), bbox.height(), feature_, sym_);
+
     coord2d center = bbox.center();
     agg::trans_affine_translation recenter(-center.x, -center.y);
     // multiplication by scale factor is handled in placement_finder::set_marker
     box2d<double> label_ext = bbox * (recenter * trans);
-
-    bool unlock_image = mapnik::get<value_bool>(sym_, keys::unlock_image, false);
-    double shield_dx = mapnik::get<value_double>(sym_, keys::shield_dx, 0.0);
-    double shield_dy = mapnik::get<value_double>(sym_, keys::shield_dy, 0.0);
 
     if (m->is_vector())
     {

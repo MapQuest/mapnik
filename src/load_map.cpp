@@ -96,6 +96,7 @@ private:
     void parse_layer(Map & map, xml_node const& lay);
     void parse_symbolizer_base(symbolizer_base &sym, xml_node const& pt);
     void parse_collidable_properties(symbolizer_base &sym, xml_node const &pt);
+  void parse_placement_properties(symbolizer_base &sym, xml_node const &pt, bool default_fixed_spacing = false);
 
     void parse_fontset(Map & map, xml_node const & fset);
     bool parse_font(font_set & fset, xml_node const& f);
@@ -943,6 +944,31 @@ void map_parser::parse_collidable_properties(symbolizer_base &symbol, xml_node c
     if (ignore_placement) put(symbol, keys::ignore_placement, *ignore_placement);
 }
 
+void map_parser::parse_placement_properties(symbolizer_base &symbol, xml_node const &sym,
+                                            bool default_fixed_spacing)
+{
+    optional<double> spacing = sym.get_opt_attr<double>("spacing");
+    if (!spacing)
+    {
+        // https://github.com/mapnik/mapnik/issues/1427
+        spacing = sym.get_opt_attr<double>("label-spacing");
+    }
+    if (spacing) put(symbol, keys::spacing, *spacing);
+
+    optional<boolean> force_odd_labels = sym.get_opt_attr<boolean>("force-odd-labels");
+    if (force_odd_labels) put(symbol, keys::force_odd_labels, *force_odd_labels);
+
+    optional<boolean> fixed_spacing = sym.get_opt_attr<boolean>("fixed-spacing");
+    if (fixed_spacing)
+    {
+        put(symbol, keys::fixed_spacing, *fixed_spacing);
+    }
+    else
+    {
+        put(symbol, keys::fixed_spacing, default_fixed_spacing);
+    }
+}
+
 void map_parser::parse_point_symbolizer(rule & rule, xml_node const & sym)
 {
     try
@@ -1093,6 +1119,8 @@ void map_parser::parse_markers_symbolizer(rule & rule, xml_node const& sym)
         if (mpolicy) put(symbol, keys::markers_multipolicy, marker_multi_policy_enum(*mpolicy));
 
         parse_symbolizer_base(symbol, sym);
+        parse_collidable_properties(symbol, sym);
+        parse_placement_properties(symbol, sym, true);
         rule.append(std::move(symbol));
     }
     catch (config_error const& ex)
@@ -1220,6 +1248,7 @@ void map_parser::parse_text_symbolizer(rule & rule, xml_node const& sym)
         text_symbolizer text_symbol;
         parse_symbolizer_base(text_symbol, sym);
         parse_collidable_properties(text_symbol, sym);
+        parse_placement_properties(text_symbol, sym);
         put<text_placements_ptr>(text_symbol, keys::text_placements_, placement_finder);
         optional<halo_rasterizer_e> halo_rasterizer_ = sym.get_opt_attr<halo_rasterizer_e>("halo-rasterizer");
         if (halo_rasterizer_) put(text_symbol, keys::halo_rasterizer, halo_rasterizer_enum(*halo_rasterizer_));
@@ -1314,6 +1343,7 @@ void map_parser::parse_shield_symbolizer(rule & rule, xml_node const& sym)
         put(shield_symbol, keys::file , parse_path(file, sym.get_tree().path_expr_grammar));
         parse_symbolizer_base(shield_symbol, sym);
         parse_collidable_properties(shield_symbol, sym);
+        parse_placement_properties(shield_symbol, sym);
         rule.append(std::move(shield_symbol));
     }
     catch (config_error const& ex)

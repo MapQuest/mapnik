@@ -120,6 +120,7 @@ protected:
 
     text_placement_info_ptr placement_;
     collidable_properties collidable_properties_;
+    placement_properties placement_properties_;
     placement_finder finder_;
 
     //ShieldSymbolizer only

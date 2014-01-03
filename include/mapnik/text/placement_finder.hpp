@@ -49,7 +49,8 @@ public:
                         text_placement_info_ptr placement_info,
                         face_manager_freetype & font_manager,
                         double scale_factor,
-                        collidable_properties const &cprops);
+                        collidable_properties const &cprops,
+                        placement_properties const &pprops);
 
     /** Try to place a single label at the given point. */
     bool find_point_placement(pixel_position const& pos);
@@ -109,6 +110,7 @@ private:
     pixel_position marker_displacement_;
   
     collidable_properties collidable_properties_;
+    placement_properties placement_properties_;
 };
 
 }//ns mapnik

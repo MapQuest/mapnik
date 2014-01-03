@@ -404,6 +404,12 @@ void export_text_placement()
         .def_readwrite("ignore_placement", &collidable_properties::ignore_placement)
         ;
 
+    class_with_converter<placement_properties>
+        ("PlacementProperties")
+        .def_readwrite("label_spacing", &placement_properties::label_spacing)
+        .def_readwrite("force_odd_labels", &placement_properties::force_odd_labels)
+        ;
+
     class_with_converter<text_symbolizer_properties>
         ("TextSymbolizerProperties")
         .def_readwrite_convert("label_placement", &text_symbolizer_properties::label_placement)
@@ -414,11 +420,9 @@ void export_text_placement()
         .add_property("displacement",
                       &get_displacement,
                       &set_displacement)
-        .def_readwrite("label_spacing", &text_symbolizer_properties::label_spacing)
         .def_readwrite("label_position_tolerance", &text_symbolizer_properties::label_position_tolerance)
         .def_readwrite("minimum_path_length", &text_symbolizer_properties::minimum_path_length)
         .def_readwrite("maximum_angle_char_delta", &text_symbolizer_properties::max_char_angle_delta)
-        .def_readwrite("force_odd_labels", &text_symbolizer_properties::force_odd_labels)
         .def_readwrite("largest_bbox_only", &text_symbolizer_properties::largest_bbox_only)
         .def_readwrite("text_ratio", &text_symbolizer_properties::text_ratio)
         .def_readwrite("wrap_width", &text_symbolizer_properties::wrap_width)

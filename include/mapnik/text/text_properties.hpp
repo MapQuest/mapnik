@@ -161,6 +161,21 @@ struct MAPNIK_DECL collidable_properties
     bool ignore_placement;
 };
 
+/** Contains all symbolizer properties which are related to text, shield or marker spacing along a line. */
+struct MAPNIK_DECL placement_properties
+{
+    // constructs and sets up default properties.
+    placement_properties(bool default_fixed_spacing = false);
+    // constructs and sets properties from a symbolizer instance.
+    explicit placement_properties(symbolizer_base const &, bool default_fixed_spacing = false);
+
+    /** distance between repeated labels on a single geometry */
+    double label_spacing;
+    /** Always try render an odd amount of labels */
+    bool force_odd_labels;
+    bool fixed_spacing;
+};
+
 /** Contains all text symbolizer properties which are not directly related to text formatting. */
 struct MAPNIK_DECL text_symbolizer_properties
 {
@@ -191,14 +206,10 @@ struct MAPNIK_DECL text_symbolizer_properties
     horizontal_alignment_e halign;
     justify_alignment_e jalign;
     vertical_alignment_e valign;
-    /** distance between repeated labels on a single geometry */
-    double label_spacing;
     /** distance the label can be moved on the line to fit, if 0 the default is used */
     double label_position_tolerance;
     double minimum_path_length;
     double max_char_angle_delta;
-    /** Always try render an odd amount of labels */
-    bool force_odd_labels;
     /** Only consider geometry with largest bbox (polygons) */
     bool largest_bbox_only;
     double text_ratio;

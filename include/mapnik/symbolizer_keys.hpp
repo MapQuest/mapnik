@@ -80,6 +80,8 @@ enum class keys : std::uint8_t
     avoid_edges,
     minimum_distance,
     minimum_padding,
+    force_odd_labels,
+    fixed_spacing,
     MAX_SYMBOLIZER_KEY
 };
 

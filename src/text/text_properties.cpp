@@ -105,11 +105,9 @@ text_symbolizer_properties::text_symbolizer_properties() :
     halign(H_AUTO),
     jalign(J_AUTO),
     valign(V_AUTO),
-    label_spacing(0.0),
     label_position_tolerance(0.0),
     minimum_path_length(0.0),
     max_char_angle_delta(22.5 * M_PI/180.0),
-    force_odd_labels(false),
     largest_bbox_only(true),
     text_ratio(0.0),
     wrap_width(0.0),
@@ -156,13 +154,6 @@ void text_symbolizer_properties::from_xml(xml_node const &sym, fontset_map const
     if (wrap_before_) wrap_before = *wrap_before_;
     optional<double> label_position_tolerance_ = sym.get_opt_attr<double>("label-position-tolerance");
     if (label_position_tolerance_) label_position_tolerance = *label_position_tolerance_;
-    optional<double> spacing_ = sym.get_opt_attr<double>("spacing");
-    if (spacing_) label_spacing = *spacing_;
-    else {
-        // https://github.com/mapnik/mapnik/issues/1427
-        spacing_ = sym.get_opt_attr<double>("label-spacing");
-        if (spacing_) label_spacing = *spacing_;
-    }
     optional<double> min_path_length_ = sym.get_opt_attr<double>("minimum-path-length");
     if (min_path_length_) minimum_path_length = *min_path_length_;
     optional<boolean> largest_bbox_only_ = sym.get_opt_attr<boolean>("largest-bbox-only");
@@ -240,10 +231,6 @@ void text_symbolizer_properties::to_xml(boost::property_tree::ptree &node,
     if (label_position_tolerance != dfl.label_position_tolerance || explicit_defaults)
     {
         set_attr(node, "label-position-tolerance", label_position_tolerance);
-    }
-    if (label_spacing != dfl.label_spacing || explicit_defaults)
-    {
-        set_attr(node, "spacing", label_spacing);
     }
     if (minimum_path_length != dfl.minimum_path_length || explicit_defaults)
     {
@@ -423,6 +410,20 @@ collidable_properties::collidable_properties(symbolizer_base const &sym)
     minimum_padding (get<double>(sym, keys::minimum_padding,  0.0)),
     allow_overlap   (get<bool>  (sym, keys::allow_overlap,    false)),
     ignore_placement(get<bool>  (sym, keys::ignore_placement, false))
+{
+}
+
+placement_properties::placement_properties(bool default_fixed_spacing)
+  : label_spacing   (0.0),
+    force_odd_labels(false),
+    fixed_spacing   (default_fixed_spacing)
+{
+}
+
+placement_properties::placement_properties(symbolizer_base const &sym, bool default_fixed_spacing)
+  : label_spacing   (get<double>(sym, keys::spacing,          0.0)),
+    force_odd_labels(get<bool>  (sym, keys::force_odd_labels, false)),
+    fixed_spacing   (get<bool>  (sym, keys::fixed_spacing,    default_fixed_spacing))
 {
 }
 

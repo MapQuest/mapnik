@@ -126,7 +126,8 @@ placement_finder::placement_finder(feature_impl const& feature,
                                    text_placement_info_ptr placement_info,
                                    face_manager_freetype & font_manager,
                                    double scale_factor,
-                                   collidable_properties const &cprops)
+                                   collidable_properties const &cprops,
+                                   placement_properties const &pprops)
     : feature_(feature),
       detector_(detector),
       extent_(extent),
@@ -138,7 +139,8 @@ placement_finder::placement_finder(feature_impl const& feature,
       has_marker_(false),
       marker_(),
       marker_box_(),
-      collidable_properties_(cprops)
+      collidable_properties_(cprops),
+      placement_properties_(pprops)
 {
 }
 
@@ -324,7 +326,7 @@ bool placement_finder::find_point_placement(pixel_position const& pos)
 template <typename T>
 bool placement_finder::find_line_placements(T & path, bool points)
 {
-    if (!layout_.num_lines()) return true; //TODO
+    if ((layout_.num_lines() == 0) && !has_marker_) return true; //TODO
     vertex_cache pp(path);
 
     bool success = false;
@@ -413,7 +415,7 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
 
     glyph_positions_ptr glyphs = std::make_shared<glyph_positions>();
     std::vector<box2d<double> > bboxes;
-    bboxes.reserve(layout_.text().length());
+    bboxes.reserve(layout_.text().length() + (has_marker_ ? 1 : 0));
     int upside_down_glyph_count = 0;
 
     text_upright_e real_orientation = simplify_upright(orientation, pp.angle());
@@ -422,6 +424,17 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
     double offset = alignment_offset().y + info_->properties.displacement.y * scale_factor_ + sign * layout_.height()/2.;
 
     glyphs->reserve(layout_.glyphs_count());
+
+    if (has_marker_)
+    {
+        pixel_position pos = pp.current_position();
+        box2d<double> box = marker_box_;
+
+        box.re_center(pos.x, pos.y);
+
+        glyphs->set_marker(marker_, pos);
+        bboxes.push_back(box);
+    }
 
     for (auto const& line : layout_)
     {
@@ -531,13 +544,13 @@ double placement_finder::normalize_angle(double angle)
 double placement_finder::get_spacing(double path_length, double layout_width) const
 {
     int num_labels = 1;
-    if (info_->properties.label_spacing > 0)
+    if (placement_properties_.label_spacing > 0)
     {
         num_labels = static_cast<int>(floor(
-            path_length / (info_->properties.label_spacing * scale_factor_ + layout_width)));
+            path_length / (placement_properties_.label_spacing * scale_factor_ + layout_width)));
     }
 
-    if (info_->properties.force_odd_labels && num_labels % 2 == 0)
+    if (placement_properties_.force_odd_labels && num_labels % 2 == 0)
     {
         --num_labels;
     }
@@ -545,6 +558,17 @@ double placement_finder::get_spacing(double path_length, double layout_width) co
     {
         num_labels = 1;
     }
+    if (placement_properties_.fixed_spacing)
+    {
+        std::clog << "get_spacing(" << path_length << ", " << layout_width << ") => "
+                  << (placement_properties_.label_spacing * scale_factor_) 
+                  << " // " << (path_length / num_labels) << " [" 
+                  << num_labels << "]\n";
+        return placement_properties_.label_spacing * scale_factor_;
+    }
+
+    std::clog << "get_spacing(" << path_length << ", " << layout_width << ") => "
+              << (path_length / num_labels) << " [" << num_labels << "]\n";
     return path_length / num_labels;
 }
 

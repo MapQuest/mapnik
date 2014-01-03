@@ -53,7 +53,8 @@ text_symbolizer_helper::text_symbolizer_helper(const text_symbolizer &sym, const
       points_on_line_(false),
       placement_(mapnik::get<text_placements_ptr>(sym_, keys::text_placements_)->get_placement_info(scale_factor)),
       collidable_properties_(sym),
-      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_)
+      placement_properties_(sym),
+      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_, placement_properties_)
 {
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
@@ -266,7 +267,8 @@ text_symbolizer_helper::text_symbolizer_helper(
       points_on_line_(true),
       placement_(mapnik::get<text_placements_ptr>(sym_, keys::text_placements_)->get_placement_info(scale_factor)),
       collidable_properties_(sym),
-      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_)
+      placement_properties_(sym),
+      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_, placement_properties_)
 {
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
@@ -290,7 +292,8 @@ text_symbolizer_helper::text_symbolizer_helper(
       points_on_line_(true),
       placement_(std::make_shared<text_placement_info_dummy>(scale_factor)),
       collidable_properties_(sym),
-      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_)
+      placement_properties_(sym),
+      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_, placement_properties_)
 {
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
@@ -318,7 +321,8 @@ text_symbolizer_helper::text_symbolizer_helper(
       points_on_line_(false),
       placement_(std::make_shared<text_placement_info_dummy>(scale_factor)),
       collidable_properties_(sym),
-      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_)
+      placement_properties_(sym),
+      finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_, placement_properties_)
 {
     initialize_geometries();
     if (!geometries_to_process_.size()) return;
@@ -394,7 +398,7 @@ void text_symbolizer_helper::init_marker(boost::optional<std::string> default_ma
     {
       m = std::make_shared<mapnik::marker>();
     }
-    if (!m) return;
+    if (!m) { std::clog << "no marker\n"; return; }
 
     agg::trans_affine trans;
     auto image_transform = get_optional<transform_type>(sym_, keys::image_transform);
@@ -429,6 +433,7 @@ void text_symbolizer_helper::init_marker(boost::optional<std::string> default_ma
 
     pixel_position marker_displacement;
     marker_displacement.set(shield_dx,shield_dy);
+    std::clog << "marker @ " << label_ext << "\n";
     finder_.set_marker(std::make_shared<marker_info>(m, trans), label_ext, unlock_image, marker_displacement);
 }
 

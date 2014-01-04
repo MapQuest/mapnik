@@ -514,7 +514,10 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
             detector_.insert(bbox, layout_.text());
         }
     }
-    placements_.push_back(glyphs);
+    if ((layout_.glyphs_count() > 0) || has_marker_)
+    {
+        placements_.push_back(glyphs);
+    }
     return true;
 }
 
@@ -558,7 +561,7 @@ double placement_finder::get_spacing(double path_length, double layout_width) co
     {
         num_labels = 1;
     }
-    if (placement_properties_.fixed_spacing)
+    if (placement_properties_.fixed_spacing && (placement_properties_.label_spacing > 0))
     {
         std::clog << "get_spacing(" << path_length << ", " << layout_width << ") => "
                   << (placement_properties_.label_spacing * scale_factor_) 

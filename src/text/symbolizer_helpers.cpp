@@ -321,7 +321,7 @@ text_symbolizer_helper::text_symbolizer_helper(
       points_on_line_(false),
       placement_(std::make_shared<text_placement_info_dummy>(scale_factor)),
       collidable_properties_(sym),
-      placement_properties_(sym),
+      placement_properties_(sym, 100.0, true),
       finder_(feature, detector, dims_, placement_, font_manager, scale_factor, collidable_properties_, placement_properties_)
 {
     initialize_geometries();

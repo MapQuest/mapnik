@@ -413,15 +413,15 @@ collidable_properties::collidable_properties(symbolizer_base const &sym)
 {
 }
 
-placement_properties::placement_properties(bool default_fixed_spacing)
-  : label_spacing   (0.0),
+placement_properties::placement_properties(double default_spacing, bool default_fixed_spacing)
+  : label_spacing   (default_spacing),
     force_odd_labels(false),
     fixed_spacing   (default_fixed_spacing)
 {
 }
 
-placement_properties::placement_properties(symbolizer_base const &sym, bool default_fixed_spacing)
-  : label_spacing   (get<double>(sym, keys::spacing,          0.0)),
+placement_properties::placement_properties(symbolizer_base const &sym, double default_spacing, bool default_fixed_spacing)
+  : label_spacing   (get<double>(sym, keys::spacing,          default_spacing)),
     force_odd_labels(get<bool>  (sym, keys::force_odd_labels, false)),
     fixed_spacing   (get<bool>  (sym, keys::fixed_spacing,    default_fixed_spacing))
 {

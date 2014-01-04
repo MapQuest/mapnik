@@ -165,9 +165,9 @@ struct MAPNIK_DECL collidable_properties
 struct MAPNIK_DECL placement_properties
 {
     // constructs and sets up default properties.
-    placement_properties(bool default_fixed_spacing = false);
+    placement_properties(double default_spacing = 0.0, bool default_fixed_spacing = false);
     // constructs and sets properties from a symbolizer instance.
-    explicit placement_properties(symbolizer_base const &, bool default_fixed_spacing = false);
+    explicit placement_properties(symbolizer_base const &, double default_spacing = 0.0, bool default_fixed_spacing = false);
 
     /** distance between repeated labels on a single geometry */
     double label_spacing;

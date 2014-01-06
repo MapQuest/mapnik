@@ -425,17 +425,6 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
 
     glyphs->reserve(layout_.glyphs_count());
 
-    if (has_marker_)
-    {
-        pixel_position pos = pp.current_position();
-        box2d<double> box = marker_box_;
-
-        box.re_center(pos.x, pos.y);
-
-        glyphs->set_marker(marker_, pos);
-        bboxes.push_back(box);
-    }
-
     for (auto const& line : layout_)
     {
         //Only subtract half the line height here and half at the end because text is automatically
@@ -507,6 +496,27 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
             return false;
         }
     }
+
+    if (has_marker_)
+    {
+        pixel_position pos = pp.current_position();
+        box2d<double> box = marker_box_;
+
+        box.re_center(pos.x, pos.y);
+
+        // don't place marker where it would overlap the corner of the
+        // segment.
+        double box_halfwidth = marker_box_.width() / 2.0;
+        if (box_halfwidth > pp.nearest_corner())
+        {
+            return false;
+        }
+        if (collision(box)) return false;
+
+        glyphs->set_marker(marker_, pos);
+        bboxes.push_back(box);
+    }
+
     if (!collidable_properties_.ignore_placement)
     {
         for (box2d<double> const& bbox : bboxes)
@@ -514,6 +524,7 @@ bool placement_finder::single_line_placement(vertex_cache &pp, text_upright_e or
             detector_.insert(bbox, layout_.text());
         }
     }
+
     if ((layout_.glyphs_count() > 0) || has_marker_)
     {
         placements_.push_back(glyphs);

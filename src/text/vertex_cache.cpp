@@ -219,4 +219,9 @@ void vertex_cache::restore_state(state const& s)
     angle_valid_ = false;
 }
 
+double vertex_cache::nearest_corner() const
+{
+  return std::min(position_in_segment_, current_segment_->length - position_in_segment_);
+}
+
 } //ns mapnik

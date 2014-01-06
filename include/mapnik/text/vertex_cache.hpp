@@ -103,6 +103,9 @@ public:
     double angle(double width=0.);
     double linear_position() const { return position_; }
 
+    /** Returns the distance to the nearest segment end, which is possibly a
+        corner. */
+    double nearest_corner() const;
 
     /** Returns a parallel line in the specified distance. */
     vertex_cache &get_offseted(double offset, double region_width);

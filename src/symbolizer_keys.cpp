@@ -92,6 +92,7 @@ static const property_meta_type key_meta[static_cast<unsigned>(keys::MAX_SYMBOLI
     property_meta_type{ "raster-colorizer", nullptr, nullptr },
     property_meta_type{ "num-columns", static_cast<value_integer>(0), nullptr},
     property_meta_type{ "start-column", static_cast<value_integer>(1), nullptr},
+    property_meta_type{ "repeat-key", nullptr, nullptr},
     property_meta_type{ "symbolizer-properties", nullptr, nullptr}
 };
 

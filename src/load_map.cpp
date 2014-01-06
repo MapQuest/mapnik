@@ -1565,7 +1565,7 @@ void map_parser::parse_group_symbolizer(rule &rule, xml_node const & sym)
 
       set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::num_columns, sym);
       set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::start_column, sym);
-      set_symbolizer_property<symbolizer_base, std::string>(symbol, keys::repeat_key, sym);
+      set_symbolizer_property<symbolizer_base, expression_ptr>(symbol, keys::repeat_key, sym);
 
       //text_placements_ptr placements = boost::make_shared<text_placements_dummy>();
       //placements->defaults.from_xml(sym, fontsets_);

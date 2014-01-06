@@ -1561,7 +1561,7 @@ void map_parser::parse_group_symbolizer(rule &rule, xml_node const & sym)
    try
    {
       group_symbolizer symbol;
-      group_symbolizer_properties prop;
+      group_symbolizer_properties_ptr prop = std::make_shared<group_symbolizer_properties>();
 
       set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::num_columns, sym);
       set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::start_column, sym);
@@ -1576,16 +1576,19 @@ void map_parser::parse_group_symbolizer(rule &rule, xml_node const & sym)
       {
          if (node.is("GroupRule"))
          {
-            parse_group_rule(prop, node);
+            parse_group_rule(*prop, node);
+            node.set_processed(true);
          }
          else if (node.is("SimpleLayout"))
          {
-            parse_simple_layout(prop, node);
+            parse_simple_layout(*prop, node);
+             node.set_processed(true);
             ++layout_count;
          }
          else if (node.is("PairLayout"))
          {
-            parse_pair_layout(prop, node);
+            parse_pair_layout(*prop, node);
+             node.set_processed(true);
             ++layout_count;
          }
          if (layout_count > 1)
@@ -1593,7 +1596,7 @@ void map_parser::parse_group_symbolizer(rule &rule, xml_node const & sym)
              throw config_error("Provide only one layout for a GroupSymbolizer.");
          }
       }
-      put(symbol, keys::group_properties, group_symbolizer_properties_ptr(&prop));
+      put(symbol, keys::group_properties, prop);
 
       parse_symbolizer_base(symbol, sym);
       rule.append(symbol);

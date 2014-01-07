@@ -1558,64 +1558,54 @@ void map_parser::parse_raster_symbolizer(rule & rule, xml_node const & sym)
 
 void map_parser::parse_group_symbolizer(rule &rule, xml_node const & sym)
 {
-   try
-   {
-      group_symbolizer symbol;
-      group_symbolizer_properties_ptr prop = std::make_shared<group_symbolizer_properties>();
+    try
+    {
+        group_symbolizer symbol;
+        group_symbolizer_properties_ptr prop = std::make_shared<group_symbolizer_properties>();
 
-      set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::num_columns, sym);
-      set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::start_column, sym);
-      set_symbolizer_property<symbolizer_base, expression_ptr>(symbol, keys::repeat_key, sym);
+        set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::num_columns, sym);
+        set_symbolizer_property<symbolizer_base, value_integer>(symbol, keys::start_column, sym);
+        set_symbolizer_property<symbolizer_base, expression_ptr>(symbol, keys::repeat_key, sym);
 
-      //text_placements_ptr placements = boost::make_shared<text_placements_dummy>();
-      //placements->defaults.from_xml(sym, fontsets_);
-      //symbol.set_placement_options(placements);
+        text_placements_ptr placements = std::make_shared<text_placements_dummy>();
+        placements->defaults.from_xml(sym, fontsets_);
+        put<text_placements_ptr>(symbol, keys::text_placements_, placements);
 
-      size_t layout_count = 0;
-      for (auto const& node : sym)
-      {
-         if (node.is("GroupRule"))
-         {
-            parse_group_rule(*prop, node);
-            node.set_processed(true);
-         }
-         else if (node.is("SimpleLayout"))
-         {
-            parse_simple_layout(*prop, node);
-             node.set_processed(true);
-            ++layout_count;
-         }
-         else if (node.is("PairLayout"))
-         {
-            parse_pair_layout(*prop, node);
-             node.set_processed(true);
-            ++layout_count;
-         }
-         if (layout_count > 1)
-         {
-             throw config_error("Provide only one layout for a GroupSymbolizer.");
-         }
-      }
-      put(symbol, keys::group_properties, prop);
+        size_t layout_count = 0;
+        for (auto const& node : sym)
+        {
+            if (node.is("GroupRule"))
+            {
+                parse_group_rule(*prop, node);
+                node.set_processed(true);
+            }
+            else if (node.is("SimpleLayout"))
+            {
+                parse_simple_layout(*prop, node);
+                node.set_processed(true);
+                ++layout_count;
+            }
+            else if (node.is("PairLayout"))
+            {
+                parse_pair_layout(*prop, node);
+                node.set_processed(true);
+                ++layout_count;
+            }
+            if (layout_count > 1)
+            {
+                throw config_error("Provide only one layout for a GroupSymbolizer.");
+            }
+        }
+        put(symbol, keys::group_properties, prop);
 
-      parse_symbolizer_base(symbol, sym);
-      rule.append(symbol);
-   }
-   catch (const config_error & ex)
-   {
-      ex.append_context(sym);
-      throw;
-   }
-}
-
-void map_parser::parse_simple_layout(group_symbolizer_properties & prop, xml_node const & node)
-{
-   simple_row_layout layout;
-
-   optional<double> item_margin = node.get_opt_attr<double>("item-margin");
-   if (item_margin) layout.set_item_margin(*item_margin);
-
-   prop.set_layout(std::move(layout));
+        parse_symbolizer_base(symbol, sym);
+        rule.append(symbol);
+    }
+    catch (const config_error & ex)
+    {
+        ex.append_context(sym);
+        throw;
+    }
 }
 
 void map_parser::parse_debug_symbolizer(rule & rule, xml_node const & sym)
@@ -1718,57 +1708,67 @@ bool map_parser::parse_raster_colorizer(raster_colorizer_ptr const& rc,
 
 void map_parser::parse_group_rule(group_symbolizer_properties & prop, xml_node const & node)
 {
-   try
-   {
-      rule fake_rule;
-      expression_ptr filter, repeat_key;
+    try
+    {
+        rule fake_rule;
+        expression_ptr filter, repeat_key;
 
-      xml_node const *filter_child = node.get_opt_child("Filter"),
-                     *rptkey_child = node.get_opt_child("RepeatKey");
+        xml_node const *filter_child = node.get_opt_child("Filter"),
+                       *rptkey_child = node.get_opt_child("RepeatKey");
 
-      if (filter_child)
-      {
-          filter = filter_child->get_value<expression_ptr>();
-      }
-      else
-      {
-          filter = std::make_shared<mapnik::expr_node>(true);
-      }
+        if (filter_child)
+        {
+            filter = filter_child->get_value<expression_ptr>();
+        }
+        else
+        {
+            filter = std::make_shared<mapnik::expr_node>(true);
+        }
 
-      if (rptkey_child)
-      {
-          repeat_key = rptkey_child->get_value<expression_ptr>();
-      }
+        if (rptkey_child)
+        {
+            repeat_key = rptkey_child->get_value<expression_ptr>();
+        }
 
-      group_rule_ptr rule = std::make_shared<group_rule>(filter, repeat_key);
+        group_rule_ptr rule = std::make_shared<group_rule>(filter, repeat_key);
 
-      parse_symbolizers(fake_rule, node);
+        parse_symbolizers(fake_rule, node);
 
-      for (auto const& sym : fake_rule)
-      {
-         rule->append(sym);
-      }
+        for (auto const& sym : fake_rule)
+        {
+           rule->append(sym);
+        }
 
-      prop.add_rule(rule);
-   }
-   catch (const config_error & ex)
-   {
-      ex.append_context(node);
-      throw;
-   }
+        prop.add_rule(rule);
+     }
+     catch (const config_error & ex)
+     {
+         ex.append_context(node);
+         throw;
+     }
+}
+
+void map_parser::parse_simple_layout(group_symbolizer_properties & prop, xml_node const & node)
+{
+    simple_row_layout layout;
+
+    optional<double> item_margin = node.get_opt_attr<double>("item-margin");
+    if (item_margin) layout.set_item_margin(*item_margin);
+
+    prop.set_layout(std::move(layout));
 }
 
 void map_parser::parse_pair_layout(group_symbolizer_properties & prop, xml_node const & node)
 {
-   pair_layout layout;
+    pair_layout layout;
 
-   optional<double> item_margin = node.get_opt_attr<double>("item-margin");
-   if (item_margin) layout.set_item_margin(*item_margin);
+    optional<double> item_margin = node.get_opt_attr<double>("item-margin");
+    if (item_margin) layout.set_item_margin(*item_margin);
 
-   optional<double> max_difference = node.get_opt_attr<double>("max-difference");
-   if (max_difference) layout.set_max_difference(*max_difference);
+    optional<double> max_difference = node.get_opt_attr<double>("max-difference");
+    if (max_difference) layout.set_max_difference(*max_difference);
 
-   prop.set_layout(std::move(layout));
+    prop.set_layout(std::move(layout));
 }
 
 void map_parser::ensure_font_face(std::string const& face_name)

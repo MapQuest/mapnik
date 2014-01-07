@@ -29,6 +29,7 @@
 #include <mapnik/text/text_properties.hpp>
 #include <mapnik/text/placements_list.hpp>
 #include <mapnik/text/vertex_cache.hpp>
+#include <mapnik/text/placement_checker.hpp>
 
 // agg
 #include "agg_conv_clip_polyline.h"
@@ -105,15 +106,6 @@ private:
     bool initialized_;
     unsigned values_tried_;
 };
-
-
-// Output is centered around (0,0)
-static void rotated_box2d(box2d<double> & box, rotation const& rot, double width, double height)
-{
-    double new_width = width * rot.cos + height * rot.sin;
-    double new_height = width * rot.sin + height * rot.cos;
-    box.init(-new_width/2., -new_height/2., new_width/2., new_height/2.);
-}
 
 pixel_position pixel_position::rotate(rotation const& rot) const
 {
@@ -268,52 +260,20 @@ double placement_finder::jalign_offset(double line_width) const //TODO
 
 bool placement_finder::find_point_placement(pixel_position const& pos)
 {
-    glyph_positions_ptr glyphs = std::make_shared<glyph_positions>();
+    placement_checker check(layout_, info_, orientation_, jalign_, has_marker_, 
+                            scale_factor_, extent_, marker_, pos, alignment_offset(), 
+                            marker_displacement_, marker_unlocked_, marker_box_);
 
-    /* Find text origin. */
-    pixel_position displacement = scale_factor_ * info_->properties.displacement + alignment_offset();
-    if (info_->properties.rotate_displacement) displacement = displacement.rotate(!orientation_);
-    glyphs->set_base_point(pos + displacement);
-    box2d<double> bbox;
-    rotated_box2d(bbox, orientation_, layout_.width(), layout_.height());
-    bbox.re_center(glyphs->get_base_point().x, glyphs->get_base_point().y);
+    bool has_placement = check.has_placement(detector_);
 
-    /* For point placements it is faster to just check the bounding box. */
-    if (collision(bbox)) return false;
-    /* add_marker first checks for collision and then updates the detector.*/
-    if (has_marker_ && !add_marker(glyphs, pos)) return false;
-    if (layout_.num_lines()) detector_.insert(bbox, layout_.text());
-
-    /* IMPORTANT NOTE:
-       x and y are relative to the center of the text
-       coordinate system:
-       x: grows from left to right
-       y: grows from bottom to top (opposite of normal computer graphics)
-    */
-    double x, y;
-
-    // set for upper left corner of text envelope for the first line, top left of first character
-    y = layout_.height() / 2.0;
-    glyphs->reserve(layout_.glyphs_count());
-
-    for ( auto const& line : layout_)
+    if (has_placement)
     {
-        y -= line.height(); //Automatically handles first line differently
-        x = jalign_offset(line.width());
-
-        for (auto const& glyph : line)
-        {
-            // place the character relative to the center of the string envelope
-            glyphs->push_back(glyph, pixel_position(x, y).rotate(orientation_), orientation_);
-            if (glyph.width)
-            {
-                //Only advance if glyph is not part of a multiple glyph sequence
-                x += glyph.width + glyph.format->character_spacing * scale_factor_;
-            }
-        }
+        glyph_positions_ptr glyphs = check.get_positions();
+        check.add_to_detector(detector_);
+        placements_.push_back(glyphs);
     }
-    placements_.push_back(glyphs);
-    return true;
+
+    return has_placement;
 }
 
 template <typename T>

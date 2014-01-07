@@ -123,7 +123,8 @@ enum class property_types : std::uint8_t
     target_placement,
     target_dash_array,
     target_colorizer,
-    target_symbolizer_properties
+    target_symbolizer_properties,
+    target_repeat_key
 };
 
 inline bool operator==(symbolizer_base const& lhs, symbolizer_base const& rhs)

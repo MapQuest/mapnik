@@ -85,10 +85,82 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
     for (auto const& col_name : columns)
     {
         sub_feature_ctx->push(col_name);
-
         if (col_name.find('%') != std::string::npos)
         {
             has_idx_cols = true;
+        }
+    }
+
+    // keep track of the sub features that we'll want to symbolize
+    // along with the group rules that they matched
+    std::vector< std::pair<group_rule_ptr, feature_ptr> > matches;
+
+    // layout manager to store and arrange bboxes of matched features
+    //group_layout_manager layout_manager(sym.get_layout());
+    //processed_text text(font_manager_, common_.scale_factor_);
+
+    // run feature or sub feature through the group rules & symbolizers
+    // for each index value in the range
+    int start = get<value_integer>(sym, keys::start_column);
+    int end = start + get<value_integer>(sym, keys::num_columns);
+    for (int col_idx = start; col_idx < end; ++col_idx)
+    {
+        feature_ptr sub_feature;
+
+        if (has_idx_cols)
+        {
+            // create sub feature with indexed column values
+            sub_feature = feature_factory::create(sub_feature_ctx, col_idx);
+
+            // copy the necessary columns to sub feature
+            for(auto const& col_name : columns)
+            {
+                if (col_name.find('%') != std::string::npos)
+                {
+                    if (col_name.size() == 1)
+                    {
+                        // column name is '%' by itself, so give the index as the value
+                        sub_feature->put(col_name, (value_integer)col_idx);
+                    }
+                    else
+                    {
+                        // indexed column
+                        std::string col_idx_name = col_name;
+                        boost::replace_all(col_idx_name, "%", boost::lexical_cast<std::string>(col_idx));
+                        sub_feature->put(col_name, feature.get(col_idx_name));
+                    }
+                }
+                else
+                {
+                    // non-indexed column
+                    sub_feature->put(col_name, feature.get(col_name));
+                }
+            }
+        }
+        else
+        {
+            // no indexed columns, so use the existing feature instead of copying
+            sub_feature = feature_ptr(&feature);
+        }
+
+        for (auto const& rule : props->get_rules())
+        {
+             if (boost::apply_visitor(evaluate<Feature,value_type>(*sub_feature),
+                                               *(rule->get_filter())).to_bool())
+             {
+                // add matched rule and feature to the list of things to draw
+                matches.push_back(std::make_pair(rule, sub_feature));
+
+                // construct a bounding box around all symbolizers for the matched rule
+                box2d<double> box;
+                for (auto const& sym : *rule)
+                {
+                    // TODO: construct layout and obtain bounding box
+                }
+
+                // TODO: add the bounding box to the layout manager
+                break;
+            }
         }
     }
 }

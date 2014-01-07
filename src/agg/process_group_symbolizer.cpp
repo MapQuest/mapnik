@@ -27,6 +27,7 @@
 #include <mapnik/image_util.hpp>
 #include <mapnik/feature_factory.hpp>
 #include <mapnik/attribute_collector.hpp>
+#include <mapnik/group/group_layout_manager.hpp>
 
 #include <mapnik/geom_util.hpp>
 #include <mapnik/symbolizer.hpp>
@@ -96,7 +97,7 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
     std::vector< std::pair<group_rule_ptr, feature_ptr> > matches;
 
     // layout manager to store and arrange bboxes of matched features
-    //group_layout_manager layout_manager(sym.get_layout());
+    group_layout_manager layout_manager(props->get_layout());
     //processed_text text(font_manager_, common_.scale_factor_);
 
     // run feature or sub feature through the group rules & symbolizers
@@ -152,13 +153,14 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
                 matches.push_back(std::make_pair(rule, sub_feature));
 
                 // construct a bounding box around all symbolizers for the matched rule
-                box2d<double> box;
+                bound_box bounds;
                 for (auto const& sym : *rule)
                 {
                     // TODO: construct layout and obtain bounding box
                 }
 
-                // TODO: add the bounding box to the layout manager
+                // add the bounding box to the layout manager
+                layout_manager.add_member_bound_box(bounds);
                 break;
             }
         }

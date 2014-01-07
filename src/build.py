@@ -211,6 +211,7 @@ source = Split(
     text/placements/dummy.cpp
     text/placements/list.cpp
     text/placements/simple.cpp
+    group/group_layout_manager.cpp
     group/group_rule.cpp
     xml_tree.cpp
     config_error.cpp

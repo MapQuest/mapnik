@@ -131,17 +131,7 @@ struct text_render_thunk
             for (glyph_position const &pos : *positions)
             {
                 glyph_vec.push_back(*pos.glyph);
-                glyph_vec.back().glyph_index = pos.glyph->glyph_index;
-                glyph_vec.back().face = pos.glyph->face;
-                glyph_vec.back().char_index = pos.glyph->char_index;
-                glyph_vec.back().width = pos.glyph->width;
-                glyph_vec.back().ymin = pos.glyph->ymin;
-                glyph_vec.back().ymax = pos.glyph->ymax;
-                glyph_vec.back().line_height = pos.glyph->line_height;
-                glyph_vec.back().offset = pos.glyph->offset;
-                glyph_vec.back().format = pos.glyph->format;
-                glyph_info const &g = glyph_vec.back();
-                new_pos.push_back(g, pos.pos, pos.rot);
+                new_pos.push_back(glyph_vec.back(), pos.pos, pos.rot);
             }
 
             placements_.push_back(new_positions);

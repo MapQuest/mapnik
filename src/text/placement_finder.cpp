@@ -282,9 +282,15 @@ bool placement_finder::find_point_placement(pixel_position const& pos)
             }
             real_boxes.push_back(real_box);
         }
+
         // add boxes to collision detector
-        for (auto const& box : real_boxes) {
-            detector_.insert(box);
+        std::list<box_element>::iterator elem_itr = box_elements_.begin();
+        std::list< box2d<double> >::iterator real_itr = real_boxes.begin();
+        while (elem_itr != box_elements_.end() && real_itr != real_boxes.end())
+        {
+            detector_.insert(*real_itr, elem_itr->repeat_key_);
+            elem_itr++;
+            real_itr++;
         }
     }
 

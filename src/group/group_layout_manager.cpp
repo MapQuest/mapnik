@@ -41,10 +41,17 @@ struct process_layout : public boost::static_visitor<>
     // The vector to populate with item offsets
     vector<pixel_position> &member_offsets_;
     
+	// The origin point of the member boxes
+	// i.e. The member boxes are positioned around input_origin,
+	//      and the offset values should position them around (0,0)
+	const pixel_position &input_origin_;
+
     process_layout(const vector<bound_box> &member_bboxes, 
-                 vector<pixel_position> &member_offsets)
+                   vector<pixel_position> &member_offsets,
+                   const pixel_position &input_origin)
        : member_boxes_(member_bboxes), 
-         member_offsets_(member_offsets)
+         member_offsets_(member_offsets),
+         input_origin_(input_origin)
     {
     }
 
@@ -54,14 +61,13 @@ struct process_layout : public boost::static_visitor<>
         double total_width = (member_boxes_.size() - 1) * layout.get_item_margin();
         for (auto const& box : member_boxes_)
         {
-            total_width += layout.get_item_margin();
             total_width += box.width();
         }
         
         double x_offset = -(total_width / 2.0);
         for (auto const& box : member_boxes_)
         {
-            member_offsets_.push_back(pixel_position(x_offset - box.minx(), 0.0));
+            member_offsets_.push_back(pixel_position(x_offset - box.minx(), -input_origin_.y));
             x_offset += box.width() + layout.get_item_margin();
         }
     }
@@ -81,7 +87,7 @@ struct process_layout : public boost::static_visitor<>
         }
 
         bound_box layout_box;
-        int middle_ifirst = (member_boxes_.size() - 1) >> 1, top_i = 0, bottom_i = 0;
+        size_t middle_ifirst = (member_boxes_.size() - 1) >> 1, top_i = 0, bottom_i = 0;
         if (middle_ifirst % 2 == 0)
         {
             layout_box = make_horiz_pair(0, 0.0, 0, x_margin, layout.get_max_difference());
@@ -135,8 +141,8 @@ private:
     bound_box box_offset_align(size_t i, double x, double y, int x_dir, int y_dir) const
     {
         const bound_box &box = member_boxes_[i];
-        pixel_position offset((x_dir == 0 ? x : x - (x_dir < 0 ? box.maxx() : box.minx())),
-                             (y_dir == 0 ? y : y - (y_dir < 0 ? box.maxy() : box.miny())));
+        pixel_position offset((x_dir == 0 ? x - input_origin_.x : x - (x_dir < 0 ? box.maxx() : box.minx())),
+                             (y_dir == 0 ? y - input_origin_.y : y - (y_dir < 0 ? box.maxy() : box.miny())));
 
         member_offsets_[i] = offset;
         return bound_box(box.minx() + offset.x, box.miny() + offset.y, box.maxx() + offset.x, box.maxy() + offset.y);
@@ -157,7 +163,7 @@ void group_layout_manager::handle_update()
     if (update_layout_)
     {
        member_offsets_.clear();
-       boost::apply_visitor(process_layout(member_boxes_, member_offsets_), layout_);
+       boost::apply_visitor(process_layout(member_boxes_, member_offsets_, input_origin_), layout_);
        update_layout_ = false;
     }     
 }

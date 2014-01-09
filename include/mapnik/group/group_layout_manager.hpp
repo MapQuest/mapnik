@@ -42,14 +42,26 @@ struct group_layout_manager
 {    
     group_layout_manager(const group_layout &layout)
         : layout_(layout),
+          input_origin_(0, 0),
+          member_boxes_(vector<bound_box>()),
+          member_offsets_(vector<pixel_position>()),
+          update_layout_(true)
+    {
+    }
+
+    group_layout_manager(const group_layout &layout, const pixel_position &input_origin)
+        : layout_(layout),
+          input_origin_(input_origin),
           member_boxes_(vector<bound_box>()),
           member_offsets_(vector<pixel_position>()),
           update_layout_(true)
     {
     }
     
-    group_layout_manager(const group_layout &layout, const vector<bound_box> &item_boxes)
+    group_layout_manager(const group_layout &layout, const pixel_position &input_origin,
+    		             const vector<bound_box> &item_boxes)
         : layout_(layout),
+          input_origin_(input_origin),
           member_boxes_(item_boxes),
           member_offsets_(vector<pixel_position>()),
           update_layout_(true)
@@ -81,6 +93,7 @@ private:
     void handle_update();
 
     group_layout layout_;
+    pixel_position input_origin_;
     vector<bound_box> member_boxes_;
     vector<pixel_position> member_offsets_;
     bool update_layout_;

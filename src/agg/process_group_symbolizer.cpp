@@ -343,7 +343,7 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
     size_t num_layout_thunks = 0;
 
     // layout manager to store and arrange bboxes of matched features
-    group_layout_manager layout_manager(props->get_layout());
+    group_layout_manager layout_manager(props->get_layout(), pixel_position(common_.width_ / 2.0, common_.height_ / 2.0));
     text_layout text(common_.font_manager_, common_.scale_factor_);
 
     // run feature or sub feature through the group rules & symbolizers

@@ -266,9 +266,32 @@ bool placement_finder::find_point_placement(pixel_position const& pos)
 
     bool has_placement = check.has_placement(detector_);
 
+    // check additional boxes
+    if (has_placement && !box_elements_.empty())
+    {
+        std::list< box2d<double> > real_boxes;
+
+        // check collision
+        for (auto const& box_elem : box_elements_)
+        {
+            box2d<double> real_box = box2d<double>(box_elem.box_);
+            real_box.move(pos.x, pos.y);
+            if (collision(real_box, box_elem.repeat_key_))
+            {
+                return false;
+            }
+            real_boxes.push_back(real_box);
+        }
+        // add boxes to collision detector
+        for (auto const& box : real_boxes) {
+            detector_.insert(box);
+        }
+    }
+
     if (has_placement)
     {
         glyph_positions_ptr glyphs = check.get_positions();
+
         check.add_to_detector(detector_);
         placements_.push_back(glyphs);
     }
@@ -500,7 +523,7 @@ double placement_finder::get_spacing(double path_length, double layout_width) co
     return path_length / num_labels;
 }
 
-bool placement_finder::collision(const box2d<double> &box) const
+bool placement_finder::collision(const box2d<double> &box, const value_unicode_string &repeat_key) const
 {
     if (!detector_.extent().intersects(box)
             ||
@@ -510,7 +533,9 @@ bool placement_finder::collision(const box2d<double> &box) const
          !extent_.contains(box + (scale_factor_ * info_->properties.minimum_padding)))
             ||
         (!info_->properties.allow_overlap &&
-         !detector_.has_point_placement(box, info_->properties.minimum_distance * scale_factor_))
+            ((repeat_key.length() == 0 && !detector_.has_point_placement(box, info_->properties.minimum_distance * scale_factor_))
+                ||
+             (repeat_key.length() > 0  && !detector_.has_placement(box, repeat_key, info_->properties.minimum_distance * scale_factor_))))
         )
     {
         return true;

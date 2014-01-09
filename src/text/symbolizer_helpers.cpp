@@ -316,6 +316,32 @@ void text_symbolizer_helper::init_marker()
     finder_.set_marker(std::make_shared<marker_info>(m, trans), bbox, unlock_image, marker_displacement);
 }
 
+/*****************************************************************************/
+
+template <typename FaceManagerT, typename DetectorT>
+text_symbolizer_helper::text_symbolizer_helper(
+        const group_symbolizer &sym, const feature_impl &feature,
+        const proj_transform &prj_trans,
+        unsigned width, unsigned height, double scale_factor,
+        const CoordTransform &t, FaceManagerT &font_manager,
+        DetectorT &detector, const box2d<double> &query_extent)
+    : sym_(sym),
+      feature_(feature),
+      prj_trans_(prj_trans),
+      t_(t),
+      dims_(0, 0, width, height),
+      query_extent_(query_extent),
+      points_on_line_(true),
+      placement_(mapnik::get<text_placements_ptr>(sym_, keys::text_placements_)->get_placement_info(scale_factor)),
+      finder_(feature, detector, dims_, placement_, font_manager, scale_factor)
+{
+    initialize_geometries();
+    if (!geometries_to_process_.size()) return;
+    finder_.next_position();
+    initialize_points();
+    init_marker();
+}
+
 template text_symbolizer_helper::text_symbolizer_helper(const text_symbolizer &sym,
     const feature_impl &feature,
     const proj_transform &prj_trans,
@@ -328,6 +354,17 @@ template text_symbolizer_helper::text_symbolizer_helper(const text_symbolizer &s
     const box2d<double> &query_extent);
 
 template text_symbolizer_helper::text_symbolizer_helper(const shield_symbolizer &sym,
+    const feature_impl &feature,
+    const proj_transform &prj_trans,
+    unsigned width,
+    unsigned height,
+    double scale_factor,
+    const CoordTransform &t,
+    face_manager<freetype_engine> &font_manager,
+    label_collision_detector4 &detector,
+    const box2d<double> &query_extent);
+
+template text_symbolizer_helper::text_symbolizer_helper(const group_symbolizer &sym,
     const feature_impl &feature,
     const proj_transform &prj_trans,
     unsigned width,

@@ -27,9 +27,11 @@
 #include <mapnik/image_util.hpp>
 #include <mapnik/feature_factory.hpp>
 #include <mapnik/attribute_collector.hpp>
-#include <mapnik/group/group_layout_manager.hpp>
+#include <mapnik/text/placement_finder.hpp>
 #include <mapnik/text/layout.hpp>
 #include <mapnik/text/renderer.hpp>
+#include <mapnik/group/group_layout_manager.hpp>
+#include <mapnik/group/group_symbolizer_helper.hpp>
 
 #include <mapnik/geom_util.hpp>
 #include <mapnik/symbolizer.hpp>
@@ -193,7 +195,14 @@ private:
     {
         for (auto const &label : detector)
         {
-            box_.expand_to_include(label.box);
+            if (box_.width() > 0 && box_.height() > 0)
+            {
+                box_.expand_to_include(label.box);
+            }
+            else
+            {
+                box_ = label.box;
+            }
         }
     }
 };
@@ -213,7 +222,7 @@ struct thunk_renderer : public boost::static_visitor<>
     thunk_renderer(renderer_type &ren,
                    buffer_type *buf,
                    renderer_common &common,
-                   layout_offset const &offset)
+                   pixel_position const &offset)
         : ren_(ren), buf_(buf), common_(common), offset_(offset)
     {}
 
@@ -244,7 +253,7 @@ struct thunk_renderer : public boost::static_visitor<>
                 glyphs->set_marker(marker_info, new_marker_pos);
             }
 
-            ren.render(*glyphs);
+            //ren.render(*glyphs);  // <--- TODO: This causes seg fault?
         }
     }
 
@@ -258,7 +267,7 @@ private:
     renderer_type &ren_;
     buffer_type *buf_;
     renderer_common &common_;
-    layout_offset offset_;
+    pixel_position offset_;
 };
 
 geometry_type *origin_point(proj_transform const &prj_trans, 
@@ -281,6 +290,8 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
                                   mapnik::feature_impl & feature,
                                   proj_transform const& prj_trans)
 {
+	box2d<double> clip_box = clipping_extent();
+
     // find all column names referenced in the group rules and symbolizers
     std::set<std::string> columns;
     attribute_collector column_collector(columns);
@@ -383,8 +394,6 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
         sub_feature->add_geometry(origin_point(prj_trans, common_));
 
         // get the layout for this set of properties
-        group_layout const &layout = props->get_layout();
-
         for (auto const& rule : props->get_rules())
         {
              if (boost::apply_visitor(evaluate<Feature,value_type>(*sub_feature),
@@ -397,7 +406,7 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
                 bound_box bounds;
                 render_thunk_list thunks;
                 extract_bboxes extractor(bounds, thunks, *sub_feature, prj_trans,
-                                         common_, text, clipping_extent());
+                                         common_, text, clip_box);
 
                 for (auto const& sym : *rule)
                 {
@@ -414,23 +423,63 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
         }
     }
 
-    // TODO: run placement_finder to get placements
+    // determine if we should be tracking repeat distance
+    text_placements_ptr placments = get<text_placements_ptr>(sym, keys::text_placements_);
+    text_placement_info_ptr placement_info = placments->get_placement_info(common_.scale_factor_);
+    bool check_repeat = (placement_info->properties.minimum_distance > 0);
 
-    // NOTE that the placement finder will have already inserted bboxes
-    // for the found placements, so we don't need to do that again.
+    group_symbolizer_helper helper(sym, feature, prj_trans,
+                                   common_.width_, common_.height_,
+                                   common_.scale_factor_, common_.t_,
+                                   common_.font_manager_, *common_.detector_,
+                                   clip_box);
 
-    // TODO: foreach placement
+    for (size_t i = 0; i < matches.size(); ++i)
     {
-        pixel_position pos; // <-- pixel position given by placement_finder
+        if (check_repeat)
+        {
+            group_rule_ptr match_rule = matches[i].first;
+            feature_ptr match_feature = matches[i].second;
+            value_unicode_string rpt_key_value = "";
+
+            // get repeat key from matched group rule
+            expression_ptr rpt_key_expr = match_rule->get_repeat_key();
+
+            // if no repeat key was defined, use default from group symbolizer
+            if (!rpt_key_expr)
+            {
+                rpt_key_expr = get<expression_ptr>(sym, keys::repeat_key);
+            }
+
+            // evalute the repeat key with the matched sub feature if we have one
+            if (rpt_key_expr)
+            {
+                rpt_key_value = boost::apply_visitor(evaluate<Feature,value_type>(*match_feature), *rpt_key_expr).to_unicode();
+            }
+            box2d<double> ob = layout_manager.offset_box_at(i);
+            helper.add_box_element(layout_manager.offset_box_at(i), rpt_key_value);
+        }
+        else
+        {
+            box2d<double> ob = layout_manager.offset_box_at(i);
+        	helper.add_box_element(layout_manager.offset_box_at(i));
+        }
+    }
+
+    placements_list placements = helper.get();
+
+    for (auto const& place : placements)
+    {
+        const pixel_position &pos = place->get_base_point(); // <-- pixel position given by placement_finder
+
         for (size_t layout_i = 0; layout_i < num_layout_thunks; ++layout_i)
         {
-            layout_offset offset = layout_manager.offset_at(layout_i);
+            const pixel_position &offset = layout_manager.offset_at(layout_i);
+            pixel_position ren_pos = pos + offset;
             // to get actual placement, need to shift original bbox by layout
             // offset and placement finder position (assuming origin of
             // layout offsets is 0,0.
-            offset += layout_offset(pos.x, pos.y);
-
-            thunk_renderer ren(*this, current_buffer_, common_, offset);
+            thunk_renderer ren(*this, current_buffer_, common_, ren_pos);
 
             for (render_thunk_ptr &thunk : layout_thunks[layout_i])
             {

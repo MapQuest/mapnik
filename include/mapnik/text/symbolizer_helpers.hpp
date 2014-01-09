@@ -63,6 +63,18 @@ public:
                            DetectorT &detector,
                            box2d<double> const& query_extent);
 
+    template <typename FaceManagerT, typename DetectorT>
+    text_symbolizer_helper(group_symbolizer const& sym,
+                           feature_impl const& feature,
+                           proj_transform const& prj_trans,
+                           unsigned width,
+                           unsigned height,
+                           double scale_factor,
+                           CoordTransform const &t,
+                           FaceManagerT &font_manager,
+                           DetectorT &detector,
+                           box2d<double> const& query_extent);
+
     /** Return all placements.*/
     placements_list const& get();
 protected:
@@ -72,7 +84,7 @@ protected:
     void initialize_points();
 
     //Input
-    text_symbolizer const& sym_;
+    symbolizer_base const& sym_;
     feature_impl const& feature_;
     proj_transform const& prj_trans_;
     CoordTransform const& t_;

@@ -24,8 +24,8 @@
 #define MAPNIK_GROUP_LAYOUT_MANAGER_HPP
 
 // mapnik
-#include <mapnik/coord.hpp>
 #include <mapnik/box2d.hpp>
+#include <mapnik/pixel_position.hpp>
 #include <mapnik/group/group_layout.hpp>
 
 // stl
@@ -37,14 +37,13 @@ namespace mapnik
 {
 
 typedef box2d<double> bound_box;
-typedef coord<double,2> layout_offset;
 
 struct group_layout_manager
 {    
     group_layout_manager(const group_layout &layout)
         : layout_(layout),
           member_boxes_(vector<bound_box>()),
-          member_offsets_(vector<layout_offset>()),
+          member_offsets_(vector<pixel_position>()),
           update_layout_(true)
     {
     }
@@ -52,7 +51,7 @@ struct group_layout_manager
     group_layout_manager(const group_layout &layout, const vector<bound_box> &item_boxes)
         : layout_(layout),
           member_boxes_(item_boxes),
-          member_offsets_(vector<layout_offset>()),
+          member_offsets_(vector<pixel_position>()),
           update_layout_(true)
     {
     }
@@ -69,7 +68,7 @@ struct group_layout_manager
         update_layout_ = true;
     }
     
-    inline const layout_offset &offset_at(size_t i)
+    inline const pixel_position &offset_at(size_t i)
     {
         handle_update();
         return member_offsets_.at(i);
@@ -83,7 +82,7 @@ private:
 
     group_layout layout_;
     vector<bound_box> member_boxes_;
-    vector<layout_offset> member_offsets_;
+    vector<pixel_position> member_offsets_;
     bool update_layout_;
 };
 

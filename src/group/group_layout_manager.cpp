@@ -39,10 +39,10 @@ struct process_layout : public boost::static_visitor<>
     const vector<bound_box> &member_boxes_;
     
     // The vector to populate with item offsets
-    vector<layout_offset> &member_offsets_;
+    vector<pixel_position> &member_offsets_;
     
     process_layout(const vector<bound_box> &member_bboxes, 
-                 vector<layout_offset> &member_offsets)
+                 vector<pixel_position> &member_offsets)
        : member_boxes_(member_bboxes), 
          member_offsets_(member_offsets)
     {
@@ -61,7 +61,7 @@ struct process_layout : public boost::static_visitor<>
         double x_offset = -(total_width / 2.0);
         for (auto const& box : member_boxes_)
         {
-            member_offsets_.push_back(layout_offset(x_offset - box.minx(), 0.0));
+            member_offsets_.push_back(pixel_position(x_offset - box.minx(), 0.0));
             x_offset += box.width() + layout.get_item_margin();
         }
     }
@@ -76,7 +76,7 @@ struct process_layout : public boost::static_visitor<>
 
         if (member_boxes_.size() == 1)
         {
-            member_offsets_[0] = layout_offset(0, 0);
+            member_offsets_[0] = pixel_position(0, 0);
             return;
         }
 
@@ -135,7 +135,7 @@ private:
     bound_box box_offset_align(size_t i, double x, double y, int x_dir, int y_dir) const
     {
         const bound_box &box = member_boxes_[i];
-        layout_offset offset((x_dir == 0 ? x : x - (x_dir < 0 ? box.maxx() : box.minx())),
+        pixel_position offset((x_dir == 0 ? x : x - (x_dir < 0 ? box.maxx() : box.minx())),
                              (y_dir == 0 ? y : y - (y_dir < 0 ? box.maxy() : box.miny())));
 
         member_offsets_[i] = offset;
@@ -146,7 +146,7 @@ private:
 bound_box group_layout_manager::offset_box_at(size_t i)
 {
     handle_update();
-    const layout_offset &offset = member_offsets_.at(i);
+    const pixel_position &offset = member_offsets_.at(i);
     const bound_box &box = member_boxes_.at(i);
     return box2d<double>(box.minx() + offset.x, box.miny() + offset.y,
                          box.maxx() + offset.x, box.maxy() + offset.y);

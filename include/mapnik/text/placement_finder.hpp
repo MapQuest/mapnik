@@ -43,6 +43,16 @@ class vertex_cache;
 class placement_finder : mapnik::noncopyable
 {
 public:
+    struct box_element
+    {
+        box_element(box2d<double> const& box, value_unicode_string const& repeat_key = "")
+           : box_(box),
+             repeat_key_(repeat_key)
+        {}
+        box2d<double> box_;
+        value_unicode_string repeat_key_;
+    };
+
     placement_finder(feature_impl const& feature,
                         DetectorType & detector,
                         box2d<double> const& extent,
@@ -61,6 +71,17 @@ public:
     placements_list const& placements() const { return placements_; }
 
     void set_marker(marker_info_ptr m, box2d<double> box, bool marker_unlocked, pixel_position const& marker_displacement);
+
+    inline void add_box_element(box2d<double> const& box, value_unicode_string const& repeat_key = "")
+    {
+        box_elements_.push_back(box_element(box, repeat_key));
+    }
+
+    inline void clear_box_elements()
+    {
+        box_elements_.clear();
+    }
+
 private:
     void init_alignment();
     pixel_position alignment_offset() const;
@@ -74,7 +95,7 @@ private:
     /** Adjusts user defined spacing to place an integer number of labels. */
     double get_spacing(double path_length, double layout_width) const;
     /** Checks for collision. */
-    bool collision(box2d<double> const& box) const;
+    bool collision(box2d<double> const& box, const value_unicode_string &repeat_key = "") const;
     /** Adds marker to glyph_positions and to collision detector. Returns false if there is a collision. */
     bool add_marker(glyph_positions_ptr glyphs, pixel_position const& pos) const;
     /** Maps upright==auto, left_only and right_only to left,right to simplify processing.
@@ -106,6 +127,12 @@ private:
     box2d<double> marker_box_;
     bool marker_unlocked_;
     pixel_position marker_displacement_;
+
+    /** Additional boxes and repeat keys to take into account when finding placement.
+     * Boxes are relative to starting point of current placement.
+     * Only used for point placements!
+     */
+    std::list<box_element> box_elements_;
 };
 
 }//ns mapnik

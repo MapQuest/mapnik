@@ -23,7 +23,27 @@
 #ifndef MAPNIK_RENDERER_COMMON_PROCESS_GROUP_SYMBOLIZER_HPP
 #define MAPNIK_RENDERER_COMMON_PROCESS_GROUP_SYMBOLIZER_HPP
 
+#include <mapnik/pixel_position.hpp>
+#include <mapnik/marker_cache.hpp>
+#include <mapnik/feature.hpp>
+#include <mapnik/feature_factory.hpp>
+#include <mapnik/renderer_common.hpp>
+#include <mapnik/label_collision_detector.hpp>
+#include <mapnik/symbolizer.hpp>
+#include <mapnik/attribute_collector.hpp>
+#include <mapnik/group/group_layout.hpp>
+#include <mapnik/group/group_layout_manager.hpp>
+#include <mapnik/group/group_rule.hpp>
+#include <mapnik/group/group_symbolizer_helper.hpp>
+#include <mapnik/group/group_symbolizer_properties.hpp>
+
+#include <mapnik/text/placements_list.hpp>
+
+#include <agg_trans_affine.h>
+
 namespace mapnik {
+
+class proj_transform;
 
 /* General:
  *
@@ -54,10 +74,7 @@ struct common_point_render_thunk
     double opacity_;
 
     common_point_render_thunk(pixel_position const &pos, marker const &m,
-                              agg::trans_affine const &tr, double opacity)
-        : pos_(pos), marker_(std::make_shared<marker>(m)),
-          tr_(tr), opacity_(opacity)
-    {}
+                              agg::trans_affine const &tr, double opacity);
 };
 
 struct common_text_render_thunk
@@ -68,39 +85,7 @@ struct common_text_render_thunk
     placements_list placements_;
     std::shared_ptr<std::vector<glyph_info> > glyphs_;
 
-    common_text_render_thunk(placements_list const &placements)
-        : placements_(), glyphs_(std::make_shared<std::vector<glyph_info> >())
-    {
-        std::vector<glyph_info> &glyph_vec = *glyphs_;
-
-        size_t glyph_count = 0;
-        for (glyph_positions_ptr positions : placements)
-        {
-            glyph_count += std::distance(positions->begin(), positions->end());
-        }
-        glyph_vec.reserve(glyph_count);
-
-        for (glyph_positions_ptr positions : placements)
-        {
-            glyph_positions_ptr new_positions = std::make_shared<glyph_positions>();
-            new_positions->reserve(std::distance(positions->begin(), positions->end()));
-            glyph_positions &new_pos = *new_positions;
-
-            new_pos.set_base_point(positions->get_base_point());
-            if (positions->marker())
-            {
-                new_pos.set_marker(positions->marker(), positions->marker_pos());
-            }
-
-            for (glyph_position const &pos : *positions)
-            {
-                glyph_vec.push_back(*pos.glyph);
-                new_pos.push_back(glyph_vec.back(), pos.pos, pos.rot);
-            }
-
-            placements_.push_back(new_positions);
-        }
-    }
+    common_text_render_thunk(placements_list const &placements);
 };
 
 /**
@@ -156,19 +141,7 @@ protected:
 };
 
 geometry_type *origin_point(proj_transform const &prj_trans,
-                            renderer_common const &common)
-{
-    // note that we choose a point in the middle of the screen to
-    // try to ensure that we don't get edge artefacts due to any
-    // symbolizers with avoid-edges set: only the avoid-edges of
-    // the group symbolizer itself should matter.
-    double x = common.width_ / 2.0, y = common.height_ / 2.0, z = 0.0;
-    common.t_.backward(&x, &y);
-    prj_trans.forward(x, y, z);
-    geometry_type *geom = new geometry_type(geometry_type::Point);
-    geom->move_to(x, y);
-    return geom;
-}
+                            renderer_common const &common);
 
 template <typename F, typename T>
 void render_group_symbolizer(group_symbolizer const &sym,

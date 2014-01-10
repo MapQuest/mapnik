@@ -182,30 +182,10 @@ void render_group_symbolizer(group_symbolizer const &sym,
 
     // find all column names referenced in the group rules and symbolizers
     std::set<std::string> columns;
-    attribute_collector column_collector(columns);
-    expression_attributes<std::set<std::string> > rk_attr(columns);
+    group_attribute_collector column_collector(columns, false);
+    column_collector(sym);
 
-    expression_ptr repeat_key = get<mapnik::expression_ptr>(sym, keys::repeat_key);
-    if (repeat_key)
-    {
-        boost::apply_visitor(rk_attr, *repeat_key);
-    }
-
-    // get columns from child rules and symbolizers
     group_symbolizer_properties_ptr props = get<group_symbolizer_properties_ptr>(sym, keys::group_properties);
-    if (props) {
-        for (auto const& rule : props->get_rules())
-        {
-            // note that this recurses down on to the symbolizer
-            // internals too, so we get all free variables.
-            column_collector(*rule);
-            // still need to collect repeat key columns
-            if (rule->get_repeat_key())
-            {
-                boost::apply_visitor(rk_attr, *(rule->get_repeat_key()));
-            }
-        }
-    }
 
     // create a new context for the sub features of this group
     context_ptr sub_feature_ctx = std::make_shared<mapnik::context_type>();

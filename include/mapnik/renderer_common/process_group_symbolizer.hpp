@@ -191,15 +191,9 @@ void render_group_symbolizer(group_symbolizer const &sym,
     context_ptr sub_feature_ctx = std::make_shared<mapnik::context_type>();
 
     // populate new context with column names referenced in the group rules and symbolizers
-    // and determine if any indexed columns are present
-    bool has_idx_cols = false;
     for (auto const& col_name : columns)
     {
         sub_feature_ctx->push(col_name);
-        if (col_name.find('%') != std::string::npos)
-        {
-            has_idx_cols = true;
-        }
     }
 
     // keep track of the sub features that we'll want to symbolize
@@ -225,42 +219,32 @@ void render_group_symbolizer(group_symbolizer const &sym,
     int end = start + get<value_integer>(sym, keys::num_columns);
     for (int col_idx = start; col_idx < end; ++col_idx)
     {
-        feature_ptr sub_feature;
+        // create sub feature with indexed column values
+        feature_ptr sub_feature = feature_factory::create(sub_feature_ctx, col_idx);
 
-        if (has_idx_cols)
+        // copy the necessary columns to sub feature
+        for(auto const& col_name : columns)
         {
-            // create sub feature with indexed column values
-            sub_feature = feature_factory::create(sub_feature_ctx, col_idx);
-
-            // copy the necessary columns to sub feature
-            for(auto const& col_name : columns)
+            if (col_name.find('%') != std::string::npos)
             {
-                if (col_name.find('%') != std::string::npos)
+                if (col_name.size() == 1)
                 {
-                    if (col_name.size() == 1)
-                    {
-                        // column name is '%' by itself, so give the index as the value
-                        sub_feature->put(col_name, (value_integer)col_idx);
-                    }
-                    else
-                    {
-                        // indexed column
-                        std::string col_idx_name = col_name;
-                        boost::replace_all(col_idx_name, "%", boost::lexical_cast<std::string>(col_idx));
-                        sub_feature->put(col_name, feature.get(col_idx_name));
-                    }
+                    // column name is '%' by itself, so give the index as the value
+                    sub_feature->put(col_name, (value_integer)col_idx);
                 }
                 else
                 {
-                    // non-indexed column
-                    sub_feature->put(col_name, feature.get(col_name));
+                    // indexed column
+                    std::string col_idx_name = col_name;
+                    boost::replace_all(col_idx_name, "%", boost::lexical_cast<std::string>(col_idx));
+                    sub_feature->put(col_name, feature.get(col_idx_name));
                 }
             }
-        }
-        else
-        {
-            // no indexed columns, so use the existing feature instead of copying
-            sub_feature = feature_ptr(&feature);
+            else
+            {
+                // non-indexed column
+                sub_feature->put(col_name, feature.get(col_name));
+            }
         }
 
         // add a single point geometry at pixel origin

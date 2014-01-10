@@ -129,7 +129,7 @@ struct agg_render_thunk_extractor : public boost::static_visitor<>,
         update_box();
     }
 
-	void operator()(text_symbolizer const &sym) const
+    void operator()(text_symbolizer const &sym) const
     {
         box2d<double> clip_box = clipping_extent_;
         text_symbolizer_helper helper(
@@ -189,20 +189,30 @@ struct thunk_renderer : public boost::static_visitor<>
         for (glyph_positions_ptr glyphs : thunk.placements_)
         {
             // move the glyphs to the correct offset
-            pixel_position const &base_point = glyphs->get_base_point();
+            pixel_position const base_point = glyphs->get_base_point();
             pixel_position new_base_point(base_point.x + offset_.x, base_point.y + offset_.y);
             glyphs->set_base_point(new_base_point);
 
             // update the position of any marker
             marker_info_ptr marker_info = glyphs->marker();
+            pixel_position marker_pos;
             if (marker_info)
             {
-                pixel_position const &marker_pos = glyphs->marker_pos();
+                marker_pos = glyphs->marker_pos();
                 pixel_position new_marker_pos(marker_pos.x + offset_.x, marker_pos.y + offset_.y);
                 glyphs->set_marker(marker_info, new_marker_pos);
             }
 
             ren.render(*glyphs);
+
+            // TODO: dirty hack - but need to put the base_point back how it
+            // was in case something else calls this again (don't want to add
+            // offset twice) or calls with a different offset.
+            glyphs->set_base_point(base_point);
+            if (marker_info)
+            {
+                glyphs->set_marker(marker_info, marker_pos);
+            }
         }
     }
 

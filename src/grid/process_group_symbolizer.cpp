@@ -48,104 +48,6 @@
 namespace mapnik {
 
 /**
- * Thunk for rendering a particular instance of a point - this
- * stores all the arguments necessary to re-render this point
- * symbolizer at a later time.
- */
-struct grid_point_render_thunk : public common_point_render_thunk
-{
-    composite_mode_e comp_op_;
-
-    grid_point_render_thunk(pixel_position const &pos, marker const &m,
-                            agg::trans_affine const &tr, double opacity,
-                            composite_mode_e comp_op)
-        : common_point_render_thunk(pos, m, tr, opacity),
-          comp_op_(comp_op)
-    {}
-};
-
-struct grid_text_render_thunk : public common_text_render_thunk
-{
-    composite_mode_e comp_op_;
-
-    grid_text_render_thunk(placements_list const &placements,
-                           composite_mode_e comp_op)
-        : common_text_render_thunk(placements),
-          comp_op_(comp_op)
-    {}
-};
-
-// Variant type for render thunks to allow us to re-render them
-// via a static visitor later.
-typedef boost::variant<grid_point_render_thunk,
-                       grid_text_render_thunk> render_thunk;
-typedef std::shared_ptr<render_thunk> render_thunk_ptr;
-typedef std::list<render_thunk_ptr> render_thunk_list;
-
-/**
- * Extension of the common render_thunk_collector.
- *
- * Visitor to extract the bounding boxes associated with placing
- * a symbolizer at a fake, virtual point - not real geometry.
- *
- * The bounding boxes can be used for layout, and the thunks are
- * used to re-render at locations according to the group layout.
- */
-struct grid_render_thunk_extractor : public boost::static_visitor<>,
-                                     public common_render_thunk_extractor<render_thunk>
-{
-	grid_render_thunk_extractor(box2d<double> &box,
-                               render_thunk_list &thunks,
-                               mapnik::feature_impl &feature,
-                               proj_transform const &prj_trans,
-                               renderer_common &common,
-                               box2d<double> const &clipping_extent)
-        : common_render_thunk_extractor(box, thunks, feature,
-                               prj_trans, common, clipping_extent)
-    {}
-
-	void operator()(point_symbolizer const &sym) const
-    {
-        composite_mode_e comp_op = get<composite_mode_e>(sym, keys::comp_op, feature_, src_over);
-
-        render_point_symbolizer(
-            sym, feature_, prj_trans_, common_,
-            [&](pixel_position const &pos, marker const &marker,
-                agg::trans_affine const &tr, double opacity) {
-                grid_point_render_thunk thunk(pos, marker, tr, opacity, comp_op);
-                thunks_.push_back(std::make_shared<render_thunk>(std::move(thunk)));
-            });
-
-        update_box();
-    }
-
-    void operator()(text_symbolizer const &sym) const
-    {
-        box2d<double> clip_box = clipping_extent_;
-        text_symbolizer_helper helper(
-            sym, feature_, prj_trans_,
-            common_.width_, common_.height_,
-            common_.scale_factor_,
-            common_.t_, common_.font_manager_, *common_.detector_,
-            clip_box);
-
-        composite_mode_e comp_op = get<composite_mode_e>(sym, keys::comp_op, feature_, src_over);
-
-        placements_list const& placements = helper.get();
-        grid_text_render_thunk thunk(placements, comp_op);
-        thunks_.push_back(std::make_shared<render_thunk>(thunk));
-
-        update_box();
-    }
-
-    template <typename T>
-    void operator()(T const &) const
-    {
-        // TODO: warning if unimplemented?
-    }
-};
-
-/**
  * Render a thunk which was frozen from a previous call to
  * extract_bboxes. We should now have a new offset at which
  * to render it, and the boxes themselves should already be
@@ -167,43 +69,23 @@ struct thunk_renderer : public boost::static_visitor<>
           feature_(feature), offset_(offset)
     {}
 
-    void operator()(grid_point_render_thunk const &thunk) const
+    void operator()(point_render_thunk const &thunk) const
     {
         ren_.render_marker(feature_, pixmap_.get_resolution(), offset_ + thunk.pos_,
                            *thunk.marker_, thunk.tr_, thunk.opacity_, thunk.comp_op_);
     }
 
-    void operator()(grid_text_render_thunk const &thunk) const
+    void operator()(text_render_thunk const &thunk) const
     {
         text_renderer_type ren(pixmap_, thunk.comp_op_, common_.scale_factor_);
         value_integer feature_id = feature_.id();
 
-        for (glyph_positions_ptr glyphs : thunk.placements_)
-        {
-            // move the glyphs to the correct offset
-            pixel_position const base_point = glyphs->get_base_point();
-            pixel_position new_base_point(base_point.x + offset_.x, base_point.y + offset_.y);
-            glyphs->set_base_point(new_base_point);
-
-            // update the position of any marker
-            marker_info_ptr marker_info = glyphs->marker();
-            pixel_position marker_pos = glyphs->marker_pos();
-            if (marker_info)
-            {
-                glyphs->set_marker(marker_info, offset_ + marker_pos);
-            }
-
-            ren.render(*glyphs, feature_id);
-
-            // TODO: dirty hack - but need to put the base_point back how it
-            // was in case something else calls this again (don't want to add
-            // offset twice) or calls with a different offset.
-            glyphs->set_base_point(base_point);
-            if (marker_info)
-            {
-                glyphs->set_marker(marker_info, marker_pos);
-            }
-        }
+        render_offset_placements(
+            thunk.placements_,
+            offset_,
+            [&] (glyph_positions_ptr glyphs) {
+        	    ren.render(*glyphs, feature_id);
+            });
     }
 
     template <typename T1>
@@ -225,7 +107,8 @@ void  grid_renderer<T>::process(group_symbolizer const& sym,
                                 mapnik::feature_impl & feature,
                                 proj_transform const& prj_trans)
 {
-    auto render_thunks =
+    render_group_symbolizer(
+        sym, feature, prj_trans, common_.query_extent_, common_,
         [&](render_thunk_list const& thunks, pixel_position const& render_offset)
         {
             thunk_renderer<T> ren(*this, pixmap_, common_, feature, render_offset);
@@ -233,10 +116,7 @@ void  grid_renderer<T>::process(group_symbolizer const& sym,
             {
                 boost::apply_visitor(ren, *thunk);
             }
-        };
-
-    render_group_symbolizer<decltype(render_thunks), grid_render_thunk_extractor>(
-        sym, feature, prj_trans, common_.query_extent_, common_, render_thunks);
+        });
 }
 
 template void grid_renderer<grid>::process(group_symbolizer const&,

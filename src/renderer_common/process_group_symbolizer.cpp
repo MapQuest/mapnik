@@ -24,14 +24,19 @@
 
 namespace mapnik {
 
-common_point_render_thunk::common_point_render_thunk(pixel_position const &pos, marker const &m,
-                                                     agg::trans_affine const &tr, double opacity)
+point_render_thunk::point_render_thunk(pixel_position const &pos, marker const &m,
+                                       agg::trans_affine const &tr, double opacity,
+                                       composite_mode_e comp_op)
     : pos_(pos), marker_(std::make_shared<marker>(m)),
-      tr_(tr), opacity_(opacity)
+      tr_(tr), opacity_(opacity), comp_op_(comp_op)
 {}
 
-common_text_render_thunk::common_text_render_thunk(placements_list const &placements)
-    : placements_(), glyphs_(std::make_shared<std::vector<glyph_info> >())
+
+text_render_thunk::text_render_thunk(placements_list const &placements,
+                                     composite_mode_e comp_op,
+                                     halo_rasterizer_enum halo_rasterizer)
+    : placements_(), glyphs_(std::make_shared<std::vector<glyph_info> >()),
+      comp_op_(comp_op), halo_rasterizer_(halo_rasterizer)
 {
     std::vector<glyph_info> &glyph_vec = *glyphs_;
     
@@ -63,6 +68,72 @@ common_text_render_thunk::common_text_render_thunk(placements_list const &placem
         placements_.push_back(new_positions);
     }
 }
+
+
+render_thunk_extractor::render_thunk_extractor(box2d<double> &box,
+                                               render_thunk_list &thunks,
+                                               mapnik::feature_impl &feature,
+                                               proj_transform const &prj_trans,
+                                               renderer_common &common,
+                                               box2d<double> const &clipping_extent)
+    : box_(box), thunks_(thunks), feature_(feature), prj_trans_(prj_trans),
+      common_(common), clipping_extent_(clipping_extent)
+{}
+
+void render_thunk_extractor::operator()(point_symbolizer const &sym) const
+{
+    composite_mode_e comp_op = get<composite_mode_e>(sym, keys::comp_op, feature_, src_over);
+
+    render_point_symbolizer(
+        sym, feature_, prj_trans_, common_,
+        [&](pixel_position const &pos, marker const &marker,
+            agg::trans_affine const &tr, double opacity) {
+            point_render_thunk thunk(pos, marker, tr, opacity, comp_op);
+            thunks_.push_back(std::make_shared<render_thunk>(std::move(thunk)));
+        });
+
+    update_box();
+}
+
+void render_thunk_extractor::operator()(text_symbolizer const &sym) const
+{
+    box2d<double> clip_box = clipping_extent_;
+    text_symbolizer_helper helper(
+        sym, feature_, prj_trans_,
+        common_.width_, common_.height_,
+        common_.scale_factor_,
+        common_.t_, common_.font_manager_, *common_.detector_,
+        clip_box);
+
+    composite_mode_e comp_op = get<composite_mode_e>(sym, keys::comp_op, feature_, src_over);
+    halo_rasterizer_enum halo_rasterizer = get<halo_rasterizer_enum>(sym, keys::halo_rasterizer, HALO_RASTERIZER_FULL);
+
+    placements_list const& placements = helper.get();
+    text_render_thunk thunk(placements, comp_op, halo_rasterizer);
+    thunks_.push_back(std::make_shared<render_thunk>(thunk));
+
+    update_box();
+}
+
+void render_thunk_extractor::update_box() const
+{
+    label_collision_detector4 &detector = *common_.detector_;
+
+    for (auto const &label : detector)
+    {
+        if (box_.width() > 0 && box_.height() > 0)
+        {
+            box_.expand_to_include(label.box);
+        }
+        else
+        {
+            box_ = label.box;
+        }
+    }
+
+    detector.clear();
+}
+
 
 geometry_type *origin_point(proj_transform const &prj_trans,
                             renderer_common const &common)

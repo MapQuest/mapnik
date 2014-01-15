@@ -216,7 +216,8 @@ files = {
     'line-opacity-multi-render':{'sizes':[(512,512)]},
     'group-symbolizer-1':{'sizes':[(512,512)]},
     'group-symbolizer-2':{'sizes':[(512,512)]},
-    'group-symbolizer-line-1':{'sizes':[(512,512)]}
+    'group-symbolizer-line-1':{'sizes':[(512,512)]},
+    'group-symbolizer-line-2':{'sizes':[(512,512)]}
     }
 
 class Reporting:

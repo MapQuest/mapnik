@@ -82,7 +82,8 @@ struct process_layout : public boost::static_visitor<>
 
         if (member_boxes_.size() == 1)
         {
-            member_offsets_[0] = pixel_position(0, 0);
+            coord<double,2> center = member_boxes_[0].center();
+            member_offsets_[0] = pixel_position(-center.x, -center.y);
             return;
         }
 

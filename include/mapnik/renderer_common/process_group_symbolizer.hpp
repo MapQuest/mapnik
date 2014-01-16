@@ -36,7 +36,7 @@
 #include <mapnik/group/group_rule.hpp>
 #include <mapnik/group/group_symbolizer_helper.hpp>
 #include <mapnik/group/group_symbolizer_properties.hpp>
-
+#include <mapnik/renderer_common/process_point_symbolizer.hpp>
 #include <mapnik/text/placements_list.hpp>
 
 #include <agg_trans_affine.h>
@@ -66,27 +66,42 @@ class proj_transform;
  * stores all the arguments necessary to re-render this point
  * symbolizer at a later time.
  */
-struct common_point_render_thunk
+struct point_render_thunk
 {
     pixel_position pos_;
     marker_ptr marker_;
     agg::trans_affine tr_;
     double opacity_;
+    composite_mode_e comp_op_;
 
-    common_point_render_thunk(pixel_position const &pos, marker const &m,
-                              agg::trans_affine const &tr, double opacity);
+    point_render_thunk(pixel_position const &pos, marker const &m,
+                       agg::trans_affine const &tr, double opacity,
+                       composite_mode_e comp_op);
 };
 
-struct common_text_render_thunk
+struct text_render_thunk
 {
     // need to keep these around, annoyingly, as the glyph_position
     // struct keeps a pointer to the glyph_info, so we have to
     // ensure the lifetime is the same.
     placements_list placements_;
     std::shared_ptr<std::vector<glyph_info> > glyphs_;
+    composite_mode_e comp_op_;
+    halo_rasterizer_enum halo_rasterizer_;
 
-    common_text_render_thunk(placements_list const &placements);
+    text_render_thunk(placements_list const &placements,
+                      composite_mode_e comp_op,
+                      halo_rasterizer_enum halo_rasterizer);
 };
+
+/**
+ * Variant type for render thunks to allow us to re-render them
+ * via a static visitor later.
+ */
+typedef boost::variant<point_render_thunk,
+                       text_render_thunk> render_thunk;
+typedef std::shared_ptr<render_thunk> render_thunk_ptr;
+typedef std::list<render_thunk_ptr> render_thunk_list;
 
 /**
  * Base class for extracting the bounding boxes associated with placing
@@ -95,22 +110,24 @@ struct common_text_render_thunk
  * The bounding boxes can be used for layout, and the thunks are
  * used to re-render at locations according to the group layout.
  */
-template <typename T>
-struct common_render_thunk_extractor
+struct render_thunk_extractor : public boost::static_visitor<>
 {
-	typedef T render_thunk;
-	typedef std::shared_ptr<render_thunk> render_thunk_ptr;
-	typedef std::list<render_thunk_ptr> render_thunk_list;
+    render_thunk_extractor(box2d<double> &box,
+                           render_thunk_list &thunks,
+                           mapnik::feature_impl &feature,
+                           proj_transform const &prj_trans,
+                           renderer_common &common,
+                           box2d<double> const &clipping_extent);
 
-	common_render_thunk_extractor(box2d<double> &box,
-                                  render_thunk_list &thunks,
-                                  mapnik::feature_impl &feature,
-                                  proj_transform const &prj_trans,
-                                  renderer_common &common,
-                                  box2d<double> const &clipping_extent)
-        : box_(box), thunks_(thunks), feature_(feature), prj_trans_(prj_trans),
-          common_(common), clipping_extent_(clipping_extent)
-    {}
+    void operator()(point_symbolizer const &sym) const;
+
+    void operator()(text_symbolizer const &sym) const;
+
+    template <typename T>
+    void operator()(T const &) const
+    {
+        // TODO: warning if unimplemented?
+    }
 
 protected:
     box2d<double> &box_;
@@ -120,30 +137,44 @@ protected:
     renderer_common &common_;
     box2d<double> clipping_extent_;
 
-    void update_box() const
-    {
-    	label_collision_detector4 &detector = *common_.detector_;
-
-        for (auto const &label : detector)
-        {
-            if (box_.width() > 0 && box_.height() > 0)
-            {
-                box_.expand_to_include(label.box);
-            }
-            else
-            {
-                box_ = label.box;
-            }
-        }
-
-        detector.clear();
-    }
+    void update_box() const;
 };
 
 geometry_type *origin_point(proj_transform const &prj_trans,
                             renderer_common const &common);
 
-template <typename F, typename T>
+template <typename F>
+void render_offset_placements(placements_list const& placements,
+                              pixel_position const& offset,
+                              F render_text) {
+
+    for (glyph_positions_ptr glyphs : placements)
+    {
+        // move the glyphs to the correct offset
+        pixel_position base_point = glyphs->get_base_point();
+        glyphs->set_base_point(base_point + offset);
+
+        // update the position of any marker
+        marker_info_ptr marker_info = glyphs->marker();
+        pixel_position marker_pos = glyphs->marker_pos();
+        if (marker_info)
+        {
+            glyphs->set_marker(marker_info, marker_pos + offset);
+        }
+
+        render_text(glyphs);
+
+        // Need to put the base_point back how it was in case something else calls this again
+        // (don't want to add offset twice) or calls with a different offset.
+        glyphs->set_base_point(base_point);
+        if (marker_info)
+        {
+            glyphs->set_marker(marker_info, marker_pos);
+        }
+    }
+}
+
+template <typename F>
 void render_group_symbolizer(group_symbolizer const &sym,
                              mapnik::feature_impl &feature,
                              proj_transform const &prj_trans,
@@ -151,8 +182,6 @@ void render_group_symbolizer(group_symbolizer const &sym,
                              renderer_common &common,
                              F render_thunks)
 {
-	typedef T extractor_type;
-
     // find all column names referenced in the group rules and symbolizers
     std::set<std::string> columns;
     group_attribute_collector column_collector(columns, false);
@@ -180,7 +209,7 @@ void render_group_symbolizer(group_symbolizer const &sym,
 
     // keep track of which lists of render thunks correspond to
     // entries in the group_layout_manager.
-    std::vector<typename extractor_type::render_thunk_list> layout_thunks;
+    std::vector<render_thunk_list> layout_thunks;
     size_t num_layout_thunks = 0;
 
     // layout manager to store and arrange bboxes of matched features
@@ -234,8 +263,8 @@ void render_group_symbolizer(group_symbolizer const &sym,
 
                 // construct a bounding box around all symbolizers for the matched rule
                 bound_box bounds;
-                typename extractor_type::render_thunk_list thunks;
-                extractor_type extractor(bounds, thunks, *sub_feature, prj_trans,
+                render_thunk_list thunks;
+                render_thunk_extractor extractor(bounds, thunks, *sub_feature, prj_trans,
                 		                 virtual_renderer, clipping_extent);
 
                 for (auto const& sym : *rule)

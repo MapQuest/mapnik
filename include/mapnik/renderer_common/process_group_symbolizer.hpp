@@ -67,7 +67,7 @@ class text_symbolizer_helper;
 // stores all the arguments necessary to re-render this point
 // symbolizer at a later time.
 
-struct point_render_thunk
+struct marker_render_thunk
 {
     pixel_position pos_;
     marker_ptr marker_;
@@ -75,7 +75,7 @@ struct point_render_thunk
     double opacity_;
     composite_mode_e comp_op_;
 
-    point_render_thunk(pixel_position const& pos, marker const& m,
+    marker_render_thunk(pixel_position const& pos, marker const& m,
                        agg::trans_affine const& tr, double opacity,
                        composite_mode_e comp_op);
 };
@@ -99,7 +99,7 @@ struct text_render_thunk
 // Variant type for render thunks to allow us to re-render them
 // via a static visitor later.
 
-using render_thunk = util::variant<point_render_thunk,
+using render_thunk = util::variant<marker_render_thunk,
                                    text_render_thunk>;
 using render_thunk_ptr = std::shared_ptr<render_thunk>;
 using render_thunk_list = std::list<render_thunk_ptr>;
@@ -120,7 +120,7 @@ struct render_thunk_extractor : public util::static_visitor<>
                            renderer_common & common,
                            box2d<double> const& clipping_extent);
 
-    void operator()(point_symbolizer const& sym) const;
+    void operator()(markers_symbolizer const& sym) const;
 
     void operator()(text_symbolizer const& sym) const;
 

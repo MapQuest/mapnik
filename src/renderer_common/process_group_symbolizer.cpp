@@ -25,7 +25,7 @@
 
 namespace mapnik {
 
-point_render_thunk::point_render_thunk(pixel_position const& pos, marker const& m,
+marker_render_thunk::marker_render_thunk(pixel_position const& pos, marker const& m,
                                        agg::trans_affine const& tr, double opacity,
                                        composite_mode_e comp_op)
     : pos_(pos), marker_(std::make_shared<marker>(m)),
@@ -82,18 +82,10 @@ render_thunk_extractor::render_thunk_extractor(box2d<double> & box,
       common_(common), clipping_extent_(clipping_extent)
 {}
 
-void render_thunk_extractor::operator()(point_symbolizer const& sym) const
+void render_thunk_extractor::operator()(markers_symbolizer const& sym) const
 {
     composite_mode_e comp_op = get<composite_mode_e>(sym, keys::comp_op, feature_, common_.vars_, src_over);
-
-    render_point_symbolizer(
-        sym, feature_, prj_trans_, common_,
-        [&](pixel_position const& pos, marker const& marker,
-            agg::trans_affine const& tr, double opacity) {
-            point_render_thunk thunk(pos, marker, tr, opacity, comp_op);
-            thunks_.push_back(std::make_shared<render_thunk>(std::move(thunk)));
-        });
-
+    // TODO: Extract a marker thunk from markers symbolizer.
     update_box();
 }
 

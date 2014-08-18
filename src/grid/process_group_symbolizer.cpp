@@ -68,7 +68,7 @@ struct thunk_renderer : public util::static_visitor<>
           feature_(feature), offset_(offset)
     {}
 
-    void operator()(point_render_thunk const &thunk) const
+    void operator()(marker_render_thunk const &thunk) const
     {
         ren_.render_marker(feature_, pixmap_.get_resolution(), offset_ + thunk.pos_,
                            *thunk.marker_, thunk.tr_, thunk.opacity_, thunk.comp_op_);
